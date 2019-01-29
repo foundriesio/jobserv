@@ -95,6 +95,12 @@ mapping:
                   privileged:
                     type: bool
                     required: false
+                  container-user:
+                    type: str
+                    required: false
+                  container-entrypoint:
+                    type: str
+                    required: false
                   host-tag:
                     type: str
                     required: False

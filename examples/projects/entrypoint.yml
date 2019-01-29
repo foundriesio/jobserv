@@ -1,0 +1,16 @@
+timeout: 5
+triggers:
+  - name: git
+    type: git_poller
+    runs:
+      - name: docker-run-option
+        container: alpine
+        host-tag: amd643
+        # The docker run command will include: --entrypoint=""
+        container-entrypoint: ""
+        script: compile
+
+scripts:
+  compile: |
+    #!/bin/sh -ex
+    echo "hello with no entrypoint"

@@ -200,6 +200,14 @@ class SimpleHandler(object):
             if self.rundef.get('privileged'):
                 log.info('Running with "--privileged"')
                 cmd.append('--privileged')
+            if self.rundef.get('container-user'):
+                user = self.rundef.get('container-user')
+                log.info('Overriding container user to be: %s', user)
+                cmd.extend(['--user', user])
+            if self.rundef.get('container-entrypoint'):
+                ep = self.rundef.get('container-entrypoint')
+                log.info('Overriding container entrypointpoint to be: %s', ep)
+                cmd.extend(['--entrypoint', ep])
             cmd.extend(['-v%s:%s' % (host, cont) for host, cont in mounts])
             cmd.extend(
                 [self.rundef['container'], self._container_command])

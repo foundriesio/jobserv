@@ -111,6 +111,8 @@ class ProjectDefinition(object):
             'container': run['container'],
             'container-auth': run.get('container-auth'),
             'privileged': run.get('privileged', False),
+            'container-user': run.get('container-user'),
+            'container-entrypoint': run.get('container-entrypoint'),
             'env': {},
             'secrets': secrets,
             'test-grepping': run.get('test-grepping'),
