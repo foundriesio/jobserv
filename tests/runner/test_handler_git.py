@@ -29,8 +29,12 @@ class GitPollerHandlerTest(TestCase):
 
         self.handler._needs_auth = no
 
-    def _create_repo(self):
-        repo_src = os.path.join(self.tmpdir, 'repo-src')
+    def _create_repo(self, repo_src='repo-src'):
+        """Create a git repo with 2 commits and return sha of the 1st.
+
+           This allows us to ensure we clone and check out the proper sha.
+        """
+        repo_src = os.path.join(self.tmpdir, repo_src)
         os.mkdir(repo_src)
         subprocess.check_call(['git', 'init'], cwd=repo_src)
         with open(os.path.join(repo_src, 'file1.txt'), 'w') as f:
@@ -132,3 +136,32 @@ class GitPollerHandlerTest(TestCase):
         header = self.handler._get_http_header(mock.Mock(), clone_url)
         self.assertEqual(
             'Authorization: Basic Zm9vOlRoaXNJc1Rlc3RHaXRMYWI=', header)
+
+    def test_git_submodules(self):
+        """Ensure that we pull in the proper git submodules"""
+        repo_src, repo_sha = self._create_repo()
+        sub_src, sub_sha = self._create_repo('submod')
+
+        # now add submodule
+        subprocess.check_call(
+            ['git', 'submodule', 'add', sub_src], cwd=repo_src)
+        subprocess.check_call(['git', 'add', '.'], cwd=repo_src)
+        subprocess.check_call(['git', 'commit', '-m', 'addsub'], cwd=repo_src)
+        repo_sha = subprocess.check_output(
+            ['git', 'log', '-1', '--format=%H'], cwd=repo_src).decode().strip()
+
+        # trigger the clone
+        self.handler.rundef = {
+            'script': '',
+            'persistent-volumes': None,
+            'run_url': 'foo',
+            'env': {
+                'GIT_URL': repo_src,
+                'GIT_SHA': repo_sha,
+            }
+        }
+        self.handler.prepare_mounts()
+
+        repo = os.path.join(self.tmpdir, 'run/repo')
+        with open(os.path.join(repo, 'submod/file1.txt')) as f:
+            self.assertEqual('content\ncontent\n', f.read())
