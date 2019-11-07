@@ -209,7 +209,7 @@ def on_webhook(proj):
         url = e.resp.headers.get('Location')
         _fail_pr(params, token, url)
         raise
-    except Exception as e:
+    except Exception:
         _fail_pr(params, token, None)
         tb = traceback.format_exc()
         return 'FAILED:\n' + tb, 500

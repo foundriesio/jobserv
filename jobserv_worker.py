@@ -382,7 +382,7 @@ def _handle_reboot(rundir, jobserv, rundef, cold):
         msg += '\n| '.join(r.stdout.decode().splitlines())
         msg += '\nRetrying in %d seconds' % (i + 1)
         jobserv.update_run(rundef, None, msg)
-        time.sleep(i+1)
+        time.sleep(i + 1)
 
     # we can't just exit here or the worker's "poll" loop might accidentally
     # pull in another run to handle. So lets sleep for 3 minutes. If we

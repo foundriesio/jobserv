@@ -137,11 +137,11 @@ class ProjectDefinition(object):
                     raise ApiError(400, [err])
         if rundef['container-auth']:
             if rundef['container-auth'] not in secrets:
-                    err = ('"container-auth" requires a secret(%s) not '
-                           'defined in the run\'s secrets.\n'
-                           % rundef['container-auth'])
-                    err += 'Secret keys sent to build: %r' % secrets.keys()
-                    raise ApiError(400, [err])
+                err = ('"container-auth" requires a secret(%s) not '
+                       'defined in the run\'s secrets.\n'
+                       % rundef['container-auth'])
+                err += 'Secret keys sent to build: %r' % secrets.keys()
+                raise ApiError(400, [err])
 
         # first set project-level params
         for k, v in self.params.items():

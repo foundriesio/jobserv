@@ -42,7 +42,7 @@ scripts:
   flake8: |
     #!/bin/sh -ex
     pip3 install flake8 flake8-junit-report==2.1.0
-    flake8 --ignore=E722 --exclude=migrations/ ./ | tee flake8.txt
+    flake8 --ignore=E722,W605,E126 --exclude=migrations/ ./ | tee flake8.txt
     flake8_junit flake8.txt /archive/junit.xml
 
   unit-test: |

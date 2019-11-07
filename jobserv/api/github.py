@@ -211,7 +211,7 @@ def on_webhook(proj):
         url = e.resp.headers.get('Location')
         _fail_pr(repo, pr_num, params['GIT_SHA'], url, token)
         raise
-    except Exception as e:
+    except Exception:
         _fail_pr(repo, pr_num, params['GIT_SHA'], None, token)
         tb = traceback.format_exc()
         return 'FAILED: %s: %s\n%s' % (repo, pr_num, tb), 500

@@ -227,8 +227,8 @@ def _gitlab_log(trigger: ProjectTrigger, change_params: Dict[str, str]) -> str:
     p = urlparse(change_params['GIT_URL'])
     proj_enc = quote_plus(p.path[1:].replace('.git', ''))
 
-    url = (p.scheme + '://' + p.netloc + '/api/v4/projects/' + proj_enc +
-           '/repository/commits')
+    url = p.scheme + '://' + p.netloc + '/api/v4/projects/' + proj_enc + \
+        '/repository/commits'
     headers = None
     tok = trigger.secrets.get('gitlabtok')
     if tok:

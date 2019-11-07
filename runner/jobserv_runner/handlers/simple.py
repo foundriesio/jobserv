@@ -524,7 +524,7 @@ class SimpleHandler(object):
             raise
         except HandlerError as e:
             jobserv.update_status('FAILED', str(e))
-        except RunCancelledError as e:
+        except RunCancelledError:
             jobserv.update_status('FAILED',
                                   'Run cancelled from server\n' + failed_msg)
         except Exception as e:

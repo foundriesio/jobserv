@@ -90,8 +90,8 @@ def _add_mr_params(params, secrets):
     }
     p = urlparse(params['GL_MR'])
     proj = quote_plus(p.path[1:p.path.find('/merge_requests/')])
-    url = (p.scheme + '://' + p.netloc + '/api/v4/projects/' +
-           proj + p.path[p.path.find('/merge_requests/'):])
+    url = p.scheme + '://' + p.netloc + '/api/v4/projects/' + \
+        proj + p.path[p.path.find('/merge_requests/'):]
     r = requests.get(url, headers=headers)
     if r.status_code != 200:
         sys.exit('Unable to get MR info: %s: %d\n%s' % (
@@ -100,8 +100,8 @@ def _add_mr_params(params, secrets):
     params['GIT_SHA'] = data['sha']
     params['GIT_SHA_BASE'] = data['diff_refs']['start_sha']
 
-    url = (p.scheme + '://' + p.netloc + '/api/v4/projects/' +
-           str(data['source_project_id']))
+    url = p.scheme + '://' + p.netloc + '/api/v4/projects/' + \
+        str(data['source_project_id'])
 
     r = requests.get(url, headers=headers)
     if r.status_code != 200:
