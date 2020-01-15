@@ -223,7 +223,7 @@ def _github_log(
         r = requests.get(url, auth=auth)
     except Exception as e:
         log.exception('Unable to get %s', url)
-        return 'Unable to get %s\n%s' % (url, str(e))
+        return 'Unable to get %s\n%s' % (url, str(e)), skip
     if r.status_code == 200:
         for commit in r.json():
             sha = commit['sha']
@@ -260,7 +260,7 @@ def _gitlab_log(
         r = requests.get(url, headers=headers, params={'ref_name': head})
     except Exception as e:
         log.exception('Unable to get %s', url)
-        return 'Unable to get %s\n%s' % (url, str(e))
+        return 'Unable to get %s\n%s' % (url, str(e)), skip
 
     gitlog = ''
     if r.status_code == 200:
@@ -317,12 +317,12 @@ def _cgit_log(
             if sha == base:
                 break
             item = entry.find('{http://www.w3.org/2005/Atom}title')
-            title = item.text if item is not None else ''
+            title = str(item.text) if item is not None else ''
             if sha and title:
                 gitlog += '%s %s\n' % (sha[:7], title)
             if sha == head:
                 item = entry.find('{http://www.w3.org/2005/Atom}content')
-                msg = item.text if item is not None else ''
+                msg = str(item.text) if item is not None else ''
                 skip = _is_skipped(msg, title)
     else:
         gitlog += 'Unable to get cgit atom feed for(%s): %d %s' % (
