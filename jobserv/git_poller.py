@@ -189,7 +189,22 @@ def _get_repo_changes(refs_cache, url: str, refs: List[str],
                                'GIT_OLD_SHA': cur, 'GIT_SHA': sha}
 
 
-def _github_log(trigger: ProjectTrigger, change_params: Dict[str, str]) -> str:
+def _is_skipped(*messages: str) -> bool:
+    """
+    determines whether commit qualifies as skipped commit
+    :param messages: commit description or commit title
+    :return: if skip flags found in either description or title
+    """
+    msg = ''.join(messages)
+    flags = ("[skip ci]", "[ci skip]")
+    return any(flag in msg for flag in flags)
+
+
+def _github_log(
+        trigger: ProjectTrigger,
+        change_params: Dict[str, str]
+) -> Tuple[str, bool]:
+    skip = False
     base = change_params['GIT_OLD_SHA']
     head = change_params['GIT_SHA']
     url = change_params['GIT_URL'].replace(
@@ -211,17 +226,25 @@ def _github_log(trigger: ProjectTrigger, change_params: Dict[str, str]) -> str:
         return 'Unable to get %s\n%s' % (url, str(e))
     if r.status_code == 200:
         for commit in r.json():
-            if commit['sha'] == base:
+            sha = commit['sha']
+            if sha == base:
                 break
+            msg = commit['commit']['message']
+            if sha == head:
+                skip = _is_skipped(msg)
             gitlog += '%s %s\n' % (
-                commit['sha'][:7], commit['commit']['message'].splitlines()[0])
+                sha[:7], msg.splitlines()[0])
     else:
         gitlog += 'Unable to get github log(%s): %d %s' % (
             url, r.status_code, r.text)
-    return gitlog
+    return gitlog, skip
 
 
-def _gitlab_log(trigger: ProjectTrigger, change_params: Dict[str, str]) -> str:
+def _gitlab_log(
+        trigger: ProjectTrigger,
+        change_params: Dict[str, str]
+) -> Tuple[str, bool]:
+    skip = False
     base = change_params['GIT_OLD_SHA']
     head = change_params['GIT_SHA']
     p = urlparse(change_params['GIT_URL'])
@@ -242,17 +265,26 @@ def _gitlab_log(trigger: ProjectTrigger, change_params: Dict[str, str]) -> str:
     gitlog = ''
     if r.status_code == 200:
         for commit in r.json():
-            if commit['id'] == base:
+            sha = commit['id']
+            if sha == base:
                 break
+            title = commit['title']
             gitlog += '%s %s\n' % (
-                commit['short_id'], commit['title'])
+                commit['short_id'], title)
+            if sha == head:
+                msg = commit['message']
+                skip = _is_skipped(msg, title)
     else:
         gitlog += 'Unable to get gitlab log(%s): %d %s' % (
             url, r.status_code, r.text)
-    return gitlog
+    return gitlog, skip
 
 
-def _cgit_log(trigger: ProjectTrigger, change_params: Dict[str, str]) -> str:
+def _cgit_log(
+        trigger: ProjectTrigger,
+        change_params: Dict[str, str]
+) -> Tuple[str, bool]:
+    skip = False
     gheader = trigger.secrets.get('git.http.extraheader')
     base = change_params['GIT_OLD_SHA']
     head = change_params['GIT_SHA']
@@ -271,26 +303,31 @@ def _cgit_log(trigger: ProjectTrigger, change_params: Dict[str, str]) -> str:
             r = requests.get(url, headers=headers, params=params)
     except Exception as e:
         log.exception('Unable to get %s', url)
-        return 'Unable to get %s\n%s' % (url, str(e))
+        return 'Unable to get %s\n%s' % (url, str(e)), skip
 
     if r.status_code == 404:
-        return ''
+        return '', skip
 
     gitlog = ''
     if r.status_code == 200:
         root = ET.fromstring(r.text)
         for entry in root.findall('{http://www.w3.org/2005/Atom}entry'):
-            sha = entry.find('{http://www.w3.org/2005/Atom}id')
-            if sha and sha.text == base:
+            item = entry.find('{http://www.w3.org/2005/Atom}id')
+            sha = item.text if item is not None else ''
+            if sha == base:
                 break
-            msg = entry.find('{http://www.w3.org/2005/Atom}title')
-            if sha is not None and msg is not None:
-                # have to do str(sha.text) to make mypy happy
-                gitlog += '%s %s\n' % (str(sha.text)[:7], msg.text)
+            item = entry.find('{http://www.w3.org/2005/Atom}title')
+            title = item.text if item is not None else ''
+            if sha and title:
+                gitlog += '%s %s\n' % (sha[:7], title)
+            if sha == head:
+                item = entry.find('{http://www.w3.org/2005/Atom}content')
+                msg = item.text if item is not None else ''
+                skip = _is_skipped(msg, title)
     else:
         gitlog += 'Unable to get cgit atom feed for(%s): %d %s' % (
             url, r.status_code, r.text)
-    return gitlog
+    return gitlog, skip
 
 
 def _trigger(entry: PollerEntry, trigger_name: str,
@@ -308,18 +345,26 @@ def _trigger(entry: PollerEntry, trigger_name: str,
     }
     p = urlparse(change_params['GIT_URL'])
     url = p.scheme + '://' + p.netloc
+    skipped = False
     if url == 'https://github.com':
-        data['reason'] += '\n' + _github_log(entry.trigger, change_params)
+        summary, skipped = _github_log(entry.trigger, change_params)
+        data['reason'] += '\n' + summary
     elif url in GITLAB_SERVERS:
-        data['reason'] += '\n' + _gitlab_log(entry.trigger, change_params)
+        summary, skipped = _gitlab_log(entry.trigger, change_params)
+        data['reason'] += '\n' + summary
     else:
         capable = _cgit_repos.get(url, True)
         if capable:
-            reason = _cgit_log(entry.trigger, change_params)
-            if reason:
-                data['reason'] += '\n' + reason
+            summary, skipped = _cgit_log(entry.trigger, change_params)
+            if summary:
+                data['reason'] += '\n' + summary
             else:
                 _cgit_repos[url] = False
+    if skipped:
+        log.info(
+            'Skipping build for %s because of skip-ci message',
+            entry.trigger.project)
+        return
 
     log.debug('Data for build is: %r', data)
     url = '%s/projects/%s/builds/' % (JOBSERV_URL, entry.trigger.project)
