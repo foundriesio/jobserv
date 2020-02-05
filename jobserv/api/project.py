@@ -151,11 +151,16 @@ def project_patch_trigger(proj, tid):
 
     val = data.get('secrets')
     if val:
-        # val is an array of {'name': <name>, 'value': <val>} dicts
-        # Convert into a dcit of {<name>: <vaue>, ...}
-        val_dict = {x['name']: x['value'] for x in val}
-        cur = trigger.secret_data
-        cur.update(val_dict)
+        # convert array of [{'name': <name>, 'value': <value>}, ...] dicts
+        # into dictionary of {<name>: <value>, ...}
+        current_secrets = trigger.secret_data
+        for secret in val:
+            name, value = secret['name'], secret['value']
+            if value is None:
+                if name in current_secrets:
+                    del current_secrets[name]
+            else:
+                current_secrets[name] = value
         trigger.update_secrets()
     db.session.commit()
     return jsendify({})

@@ -2,6 +2,7 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import json
+from uuid import uuid4
 
 from unittest.mock import patch
 
@@ -133,3 +134,44 @@ class ProjectAPITest(JobServTest):
         t = p.triggers[0]
         self.assertEqual(t.secret_data['secret1'], 'newval')
         self.assertEqual(t.secret_data['secret2'], 'hax0r')
+
+    def test_project_trigger_secret_removal(self):
+        project_name = 'projectUpdateTest'
+        trigger_url = f'http://localhost/projects/{project_name}/triggers/'
+        trigger_headers = {'Content-type': 'application/json'}
+        _sign(trigger_url, trigger_headers, 'POST')
+        secret_a = (str(uuid4()), str(uuid4()))  # (key, value) tuple
+        secret_b = (str(uuid4()), str(uuid4()))
+        secret_c = (str(uuid4()), str(uuid4()))
+        secrets = dict([secret_a, secret_b, secret_c])
+        create_data = {
+            'owner': 'tester.testing',
+            'type': TriggerTypes.git_poller.name,
+            **secrets}
+        self.create_projects(project_name)
+        response = self.client.post(
+            trigger_url,
+            headers=trigger_headers,
+            data=json.dumps(create_data))
+        self.assertEqual(201, response.status_code, msg=response.data)
+        actual_triggers = self.get_signed_json(url=trigger_url)
+        self.assertEqual(1, len(actual_triggers))
+        actual_trigger = actual_triggers[0]
+        actual_secrets = [
+            secret['name'] for secret in actual_trigger['secrets']]
+        self.assertEqual(3, len(actual_secrets))
+        self.assertIn(secret_a[0], actual_secrets)
+        self.assertIn(secret_b[0], actual_secrets)
+        self.assertIn(secret_c[0], actual_secrets)
+        remove_data = {'secrets': [{'name': secret_b[0], 'value': None}]}
+
+        self.patch_signed_json(
+            f"{trigger_url}{actual_trigger['id']}/", remove_data)
+
+        actual_trigger = self.get_signed_json(url=trigger_url)[0]
+        actual_secrets = [
+            secret['name'] for secret in actual_trigger['secrets']]
+        self.assertEqual(2, len(actual_secrets))
+        self.assertIn(secret_a[0], actual_secrets)
+        self.assertNotIn(secret_b[0], actual_secrets)
+        self.assertIn(secret_c[0], actual_secrets)

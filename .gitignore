@@ -1,5 +1,9 @@
+### PYTHON
 *.swp
 *.pyc
 *.egg*
 *build/
 *dist/
+
+### IDE
+.idea

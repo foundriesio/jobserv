@@ -12,6 +12,7 @@ import os
 import random
 import string
 import time
+from typing import Dict
 
 import bcrypt
 import sqlalchemy.dialects.mysql.mysqldb as mysqldb
@@ -153,7 +154,7 @@ class ProjectTrigger(db.Model):
             clazz.fernet = Fernet(SECRETS_FERNET_KEY.encode())
 
     @property
-    def secret_data(self):
+    def secret_data(self) -> Dict[str, str]:
         self._init_fernet()
         try:
             return self._secret_data
