@@ -34,13 +34,13 @@ Assuming a $JOBSERV_HOST is set to the instance you can register a host with:
 
   # the worker is now registered but not *enlisted*, so it won't be able to
   # handle Runs. From the JobServ's host, view you host and then enlist it
-  docker exec -it $(docker ps --filter name=api -q) flask worker list
-  docker exec -it $(docker ps --filter name=api -q) flask worker enlist <host>
+  docker exec -it $(docker ps --filter name=jobserv_api -q) flask worker list
+  docker exec -it $(docker ps --filter name=jobserv_api -q) flask worker enlist <host>
 ~~~
 
 The worker is now ready, and you can have it manually check in with the JobServ
 by running "./jobserv_worker.py check" or just run it in a loop with
-"jobserv_worker.py loop".
+"./jobserv_worker.py loop".
 
 
 ## Setting up a Project
@@ -48,15 +48,15 @@ Setting up a project can be done from the JobServ container. A quick example
 project could be:
 ~~~
   # Create a Project
-  docker exec -it $(docker ps --filter name=api -q) \
+  docker exec -it $(docker ps --filter name=jobserv_api -q) \
     flask project create home-poller
 
   # Set up a Trigger that will kick off builds
-  docker exec -it $(docker ps --filter name=api -q) \
+  docker exec -it $(docker ps --filter name=jobserv_api -q) \
     flask project add-trigger \
       -u doanac \
       -t git_poller \
-      -r https://github.com/linaro-technologies/jobserv \
+      -r https://github.com/foundriesio/jobserv \
       -f .jobserv.yml \
       home-poller
 ~~~
@@ -65,7 +65,7 @@ project could be:
 You can force the git poller to trigger a build by doing the following:
 ~~~
   # Get a shell inside the git-poller:
-  docker exec -it $(docker ps --filter name=git-poller -q) /bin/sh
+  docker exec -it $(docker ps --filter name=jobserv_git-poller -q) /bin/sh
 
   # Look at the current SHA the poller sees the project at:
   cat /data/artifacts/git_poller_cache.json
