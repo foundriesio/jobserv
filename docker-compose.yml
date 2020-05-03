@@ -6,7 +6,7 @@ volumes:
 
 services:
   db:
-    image: "mysql:5.7"
+    image: mysql
     environment:
       MYSQL_DATABASE: jobserv
       MYSQL_USER: jobserv
@@ -36,7 +36,7 @@ services:
   lci-web:
     image: dockercloud/haproxy
     ports:
-      - ${HOST_PORT-80}:80
+      - 80:80
     links:
       - api
     volumes:
