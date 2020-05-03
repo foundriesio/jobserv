@@ -48,11 +48,11 @@ Setting up a project can be done from the JobServ container. A quick example
 project could be:
 ~~~
   # Create a Project
-  docker exec -it $(docker ps --filter name=jobserv_api -q) \
+  docker exec -it $(docker ps --filter name=api -q) \
     flask project create home-poller
 
   # Set up a Trigger that will kick off builds
-  docker exec -it $(docker ps --filter name=jobserv_api -q) \
+  docker exec -it $(docker ps --filter name=api -q) \
     flask project add-trigger \
       -u doanac \
       -t git_poller \
@@ -65,7 +65,7 @@ project could be:
 You can force the git poller to trigger a build by doing the following:
 ~~~
   # Get a shell inside the git-poller:
-  docker exec -it $(docker ps --filter name=jobserv_git-poller -q) /bin/sh
+  docker exec -it $(docker ps --filter name=git-poller -q) /bin/sh
 
   # Look at the current SHA the poller sees the project at:
   cat /data/artifacts/git_poller_cache.json

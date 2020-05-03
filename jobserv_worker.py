@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 # Copyright (C) 2017 Linaro Limited
 # Copyright (C) 2018 Foundries.io
 # Author: Andy Doan <andy.doan@linaro.org>
@@ -15,7 +15,6 @@ import os
 import platform
 import random
 import shutil
-import socket
 import string
 import subprocess
 import sys
@@ -27,7 +26,6 @@ import urllib.parse
 from configparser import ConfigParser
 from multiprocessing import cpu_count
 
-from psutil import virtual_memory
 import requests
 
 script = os.path.abspath(__file__)
@@ -40,6 +38,10 @@ logging.basicConfig(
                   config.get('jobserv', 'log_level', fallback='INFO')))
 log = logging.getLogger('jobserv-worker')
 logging.getLogger('requests').setLevel(logging.WARNING)
+
+if "linux" not in sys.platform:
+    log.error('worker only supported on the linux platform')
+    sys.exit(1)
 
 FEATURE_NEW_LOOPER = config.getboolean(
     'jobserv', 'feature_new_looper', fallback=False)
@@ -61,7 +63,9 @@ def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges):
     chars = string.ascii_letters + string.digits + '!@#$^&*~'
     config['jobserv']['host_api_key'] =\
         ''.join(random.choice(chars) for _ in range(32))
-    config['jobserv']['hostname'] = hostname or socket.gethostname()
+    if not hostname:
+        with open('/etc/hostname') as f:
+            hostname = f.read().strip()
     with open(config_file, 'w') as f:
         config.write(f, True)
 
@@ -101,7 +105,7 @@ class HostProps(object):
     CACHE = os.path.join(os.path.dirname(script), 'hostprops.cache')
 
     def __init__(self):
-        mem = virtual_memory().total
+        mem = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
         surges = int(config.get('jobserv', 'surges_only', fallback='0'))
         self.data = {
             'cpu_total': cpu_count(),
@@ -116,12 +120,11 @@ class HostProps(object):
         }
 
     def _get_distro(self):
-        if platform.system() == "Linux":
-            with open('/etc/os-release') as f:
-                for line in f:
-                    if line.startswith('PRETTY_NAME'):
-                        return line.split('=')[1].strip().replace('"', '')
-        return platform.platform(aliased=True, terse=True)
+        with open('/etc/os-release') as f:
+            for line in f:
+                if line.startswith('PRETTY_NAME'):
+                    return line.split('=')[1].strip().replace('"', '')
+        return '?'
 
     def cache(self):
         with open(self.CACHE, 'w') as f:
@@ -145,7 +148,11 @@ class HostProps(object):
 
     @staticmethod
     def get_available_memory():
-        return virtual_memory().free
+        with open('/proc/meminfo') as f:
+            for line in f:
+                if line.startswith('MemFree:'):
+                    return int(line.split()[1]) * 1024  # available in bytes
+        raise RuntimeError('Unable to find "MemFree" in /proc/meminfo')
 
     @staticmethod
     @contextlib.contextmanager
