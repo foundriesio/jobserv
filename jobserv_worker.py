@@ -66,6 +66,7 @@ def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges):
     if not hostname:
         with open('/etc/hostname') as f:
             hostname = f.read().strip()
+    config['jobserv']['hostname'] = hostname
     with open(config_file, 'w') as f:
         config.write(f, True)
 

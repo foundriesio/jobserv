@@ -34,8 +34,8 @@ Assuming a $JOBSERV_HOST is set to the instance you can register a host with:
 
   # the worker is now registered but not *enlisted*, so it won't be able to
   # handle Runs. From the JobServ's host, view you host and then enlist it
-  docker exec -it $(docker ps --filter name=jobserv_api -q) flask worker list
-  docker exec -it $(docker ps --filter name=jobserv_api -q) flask worker enlist <host>
+  docker exec -it $(docker ps --filter name=api -q) flask worker list
+  docker exec -it $(docker ps --filter name=api -q) flask worker enlist <host>
 ~~~
 
 The worker is now ready, and you can have it manually check in with the JobServ
