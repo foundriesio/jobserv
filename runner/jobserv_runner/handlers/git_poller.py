@@ -17,6 +17,13 @@ def b64(val):
     return b64encode(val.encode()).decode()
 
 
+def _git_lfs(gitcheckout):
+    try:
+        with open(os.path.join(gitcheckout, '.gitattributes')) as f:
+            return 'filter=lfs' in f.read()
+    except FileNotFoundError:
+        pass
+
 class GitPoller(SimpleHandler):
     def _needs_auth(self, repo_url):
         if not repo_url.endswith('.git'):
@@ -103,6 +110,15 @@ class GitPoller(SimpleHandler):
                                  '--init', '--recursive'],
                                 cwd=dst, env=env):
                     raise HandlerError('Unable to update submodule(s)')
+
+            if _git_lfs(dst):
+                log.info('Git LFS detected. Pulling in files...')
+                if not log.exec(['git', 'lfs', 'fetch'], cwd=dst):
+                    raise HandlerError('Unable to fetch git large files')
+                if not log.exec(['git', 'lfs', 'install'], cwd=dst):
+                    raise HandlerError('Unable to install git large files')
+                if not log.exec(['git', 'lfs', 'checkout'], cwd=dst):
+                    raise HandlerError('Unable to checkout git large files')
 
     def prepare_mounts(self):
         mounts = super().prepare_mounts()
