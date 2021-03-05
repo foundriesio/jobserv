@@ -137,21 +137,7 @@ def notify_build_complete_email(build, to_list):
 
 
 def notify_build_complete_webhook(build, webhook_url, secret):
-    payload = {
-        'project_name': build.project.name,
-        'build_id': build.build_id,
-        'build_status': build.status.name,
-        'build_url': build_url(build),
-        'build_reason': build.reason,
-        'runs': []
-    }
-    for run in build.runs:
-        payload['runs'].append({
-            'url': run_url(run),
-            'name': run.name,
-            'status': run.status.name
-        })
-    data = json.dumps(payload)
+    data = json.dumps(build.as_json())
     sig = hmac.new(secret.encode(), msg=data.encode(), digestmod="sha256")
     headers = {
         'Content-type': 'application/json',
