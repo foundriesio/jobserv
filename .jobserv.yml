@@ -1,15 +1,26 @@
 timeout: 10
-webhooks:
-  - url: https://195e322796b1.ngrok.io
-    secret_name: milosz
 triggers:
   - name: merge-request
     type: github_pr
     runs:
+      - name: unit-test
+        container: python:3.6-alpine
+        host-tag: amd64
+        script: unit-test
+        shared-volumes:
+          lmp-bitbake-cache: /lmp-bitbake-cache
+
       - name: flake8
         container: python:3.6-alpine
         host-tag: amd64
         script: flake8
+
+      - name: test-progress
+        container: python:3.6-alpine
+        host-tag: amd64
+        script: dumb-progress
+        console-progress:
+          progress-pattern: "\\nNOTE: Running task (?P<current>\\d+) of (?P<total>\\d+)"
 
   - name: build-container
     type: git_poller
