@@ -40,7 +40,7 @@ def build_create(proj):
             trigger_type = trigger_type[:-9]  # strip off the "-optional"
         for t in p.triggers:
             if TriggerTypes(t.type).name == trigger_type:
-                secrets = t.secret_data
+                secrets.update(t.secret_data)
                 break
         else:
             if not optional:
@@ -52,7 +52,7 @@ def build_create(proj):
     if trigger_id:
         for t in p.triggers:
             if t.id == trigger_id:
-                secrets = t.secret_data
+                secrets.update(t.secret_data)
                 break
         else:
             raise ApiError(400, 'Unknown trigger-id: %s' % trigger_id)
