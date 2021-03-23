@@ -104,10 +104,10 @@ class TriggerTypes(enum.Enum):
     git_poller = 1
     github_pr = 2
     simple = 3
-    lava = 4
-    lava_pr = 5
+    # lava = 4
+    # lava_pr = 5
     gitlab_mr = 6
-    lava_mr = 7
+    # lava_mr = 7
 
 
 class ProjectTrigger(db.Model):
