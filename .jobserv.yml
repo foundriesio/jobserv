@@ -79,7 +79,7 @@ scripts:
 
   unit-test: |
     #!/bin/sh -ex
-    apk --no-cache add git python3-dev musl-dev gcc openssl libffi-dev openssl-dev
+    apk --no-cache add git python3-dev musl-dev g++ openssl libffi-dev openssl-dev
     git config --global user.email "cibot@example.com"
     git config --global user.name "cibot"
 
