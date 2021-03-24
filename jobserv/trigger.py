@@ -30,11 +30,6 @@ def _check_for_trigger_upgrade(rundef, trigger_type, parent_trigger_type):
             rundef['trigger_type'] = 'github_pr'
             logging.info('Updating the rundef from simple->github_pr')
             rundef = json.dumps(rundef, indent=2)
-        elif trigger_type == 'lava':
-            rundef = json.loads(rundef)
-            rundef['trigger_type'] = 'lava_pr'
-            logging.info('Updating the rundef from lava->lava_pr')
-            rundef = json.dumps(rundef, indent=2)
     elif parent_trigger_type == 'git_poller':
         if trigger_type == 'simple':
             rundef = json.loads(rundef)

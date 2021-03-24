@@ -67,11 +67,3 @@ services:
       - lci-web
     volumes:
       - artifacts:/data
-
-  lava-reaper:
-    image: jobserv
-    command: "/srv/jobserv/wait-for lci-web:80 -- flask run-lava-reaper"
-    environment:
-      INTERNAL_API_KEY: ThisIsNotSecure
-    depends_on:
-      - lci-web

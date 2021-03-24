@@ -110,13 +110,9 @@ class BuildAPITest(JobServTest):
     @patch('jobserv.api.build.trigger_build')
     def test_build_trigger_with_secrets(self, trigger_build):
         """Assert we honor the trigger-type and trigger-id params."""
-        # create two triggers to choose from
         trigger_build.return_value.build_id = 1
         pt = ProjectTrigger('user', TriggerTypes.simple.value, self.project,
                             None, None, {'foo': 'simple'})
-        db.session.add(pt)
-        pt = ProjectTrigger('user', TriggerTypes.lava.value, self.project,
-                            None, None, {'foo': 'lava'})
         db.session.add(pt)
         db.session.commit()
 
@@ -127,32 +123,20 @@ class BuildAPITest(JobServTest):
         self._post(self.urlbase, json.dumps(data), headers, 201)
         self.assertEqual({'foo': 'simple'}, trigger_build.call_args[0][4])
 
-        # try second trigger type
-        data = {'trigger-type': 'lava'}
-        _sign('http://localhost/projects/proj-1/builds/', headers, 'POST')
-        self._post(self.urlbase, json.dumps(data), headers, 201)
-        self.assertEqual({'foo': 'lava'}, trigger_build.call_args[0][4])
-
         # try "optional" trigger type (when there is no "optional")
         data = {'trigger-type': 'git-poller-optional'}
         _sign('http://localhost/projects/proj-1/builds/', headers, 'POST')
         self._post(self.urlbase, json.dumps(data), headers, 201)
         self.assertEqual({}, trigger_build.call_args[0][4])
 
-        # try "optional" trigger type
-        data = {'trigger-type': 'lava-optional'}
-        _sign('http://localhost/projects/proj-1/builds/', headers, 'POST')
-        self._post(self.urlbase, json.dumps(data), headers, 201)
-        self.assertEqual({'foo': 'lava'}, trigger_build.call_args[0][4])
-
         # try override
-        data = {'trigger-type': 'lava', 'secrets': {'foo': 'override'}}
+        data = {'trigger-type': 'simple', 'secrets': {'foo': 'override'}}
         _sign('http://localhost/projects/proj-1/builds/', headers, 'POST')
         self._post(self.urlbase, json.dumps(data), headers, 201)
         self.assertEqual({'foo': 'override'}, trigger_build.call_args[0][4])
 
         # try by trigger-id
-        data = {'trigger-id': 1}
+        data = {'trigger-id': pt.id}
         _sign('http://localhost/projects/proj-1/builds/', headers, 'POST')
         self._post(self.urlbase, json.dumps(data), headers, 201)
         self.assertEqual({'foo': 'simple'}, trigger_build.call_args[0][4])

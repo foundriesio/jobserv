@@ -55,9 +55,6 @@ SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
 # Who to email when things go wrong
 NOTIFICATION_EMAILS = os.environ.get('NOTIFICATION_EMAILS')
 
-LAVA_URLBASE = os.environ.get(
-    'LAVA_URLBASE', 'https://lava.foundries.io')
-
 # every 90 seconds
 GIT_POLLER_INTERVAL = int(os.environ.get('GIT_POLLER_INTERVAL', '90'))
 GITLAB_SERVERS = [
