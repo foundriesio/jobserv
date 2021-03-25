@@ -5,7 +5,7 @@ Flask-Migrate==2.3.1
 Flask-Testing==0.7.1
 google_cloud_storage==1.13.2
 gunicorn==19.9.0
-PyYAML==4.2b4
+PyYAML==5.4
 requests==2.21.0
 PyMySQL==0.9.3
 wheel==0.32.3
