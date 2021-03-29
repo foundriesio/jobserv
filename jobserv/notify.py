@@ -150,6 +150,7 @@ def notify_build_complete_webhook(build, webhook_url, secret):
             try:
                 r = requests.post(webhook_url, data=data, headers=headers)
                 if r.ok:
+                    log.info('Delivered webhook to %s', webhook_url)
                     return
                 logging.error('Unable to deliver webhook to %s: HTTP_%d - %s',
                               webhook_url, r.status_code, r.data)
