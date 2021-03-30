@@ -78,7 +78,10 @@ def _get_projdef(entry: PollerEntry) -> Optional[ProjectDefinition]:
 
     if gitlab:
         headers['PRIVATE-TOKEN'] = gitlab
-        url = repo.replace('.git', '') + '/raw/master/' + defile
+        p = urlparse(repo)
+        proj_enc = quote_plus(p.path[1:].replace('.git', ''))
+        url = p.scheme + '://' + p.netloc + '/api/v4/projects/' + proj_enc + \
+            '/repository/files/' + quote_plus(defile) + '/raw?ref=master'
     elif 'github' in repo:
         if token:
             headers['Authorization'] = 'token ' + token
