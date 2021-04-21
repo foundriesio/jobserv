@@ -210,6 +210,21 @@ mapping:
               only_failures:
                 type: bool
                 required: False
+          webhooks:
+            required: False
+            type: seq
+            sequence:
+              - type: map
+                mapping:
+                  url:
+                    type: str
+                    required: True
+                  secret_name:
+                    type: str
+                    required: True
+                  only_failures:
+                    type: bool
+                    required: False
   params:
     type: map
     mapping:
