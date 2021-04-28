@@ -5,6 +5,7 @@ from base64 import b64encode
 import os
 from shutil import which
 import subprocess
+from urllib.parse import urlparse
 
 import requests
 
@@ -66,6 +67,11 @@ class GitPoller(SimpleHandler):
                 log.info('Adding gitlabtok to .gitconfig')
                 fd.write('[http "%s"]\n' % clone_url)
                 fd.write('  extraheader = Authorization: Basic %s\n' % tok)
+
+                # This may help if the project has gitlab submodules
+                host = urlparse(clone_url).netloc
+                fd.write(f'[url "https://{user}:{token}@{host}/"]\n')
+                fd.write(f'  insteadOf = "git@{host}:"\n')
 
     def _create_bitbucket_content(self, log, fd, secrets, clone_url):
         tok = secrets.get('bitbuckettok')
