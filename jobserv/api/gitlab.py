@@ -5,7 +5,7 @@ import hmac
 import traceback
 import yaml
 
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 import requests
 
@@ -73,15 +73,18 @@ def _get_proj_def(trigger, token, params):
         name = trigger.definition_file
         if not name:
             name = trigger.project.name + '.yml'
-        url = trigger.definition_repo.replace('.git', '')
-        if url[-1] != '/':
-            url += '/'
-        url += 'raw/master/' + name
+        p = urlparse(trigger.definition_repo)
+        proj_enc = quote_plus(p.path[1:].replace('.git', ''))
+        url = p.scheme + '://' + p.netloc + '/api/v4/projects/' + proj_enc + \
+            '/repository/files/' + quote_plus(name) + '/raw?ref=master'
     else:
         # look up defintion in tree
         url = params['GIT_URL']
         assert url[-4:] == '.git'
-        url = url[:-4] + '/raw/' + params['GIT_SHA'] + '/.jobserv.yml'
+        p = urlparse(url)
+        proj_enc = quote_plus(p.path[1:].replace('.git', ''))
+        url = p.scheme + '://' + p.netloc + '/api/v4/projects/' + proj_enc + \
+            '/repository/files/.jobserv.yml/raw?ref=' + params['GIT_SHA']
 
     headers = {
         'PRIVATE-TOKEN': token,
