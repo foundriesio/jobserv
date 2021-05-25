@@ -433,6 +433,33 @@ class Run(db.Model, StatusMixin):
                                      for x in self.status_events]
         return data
 
+    def cancel(self):
+        # This is tricky. If we are RUNNING, then we need to go to CANCELLING
+        # to let the worker know to stop. If QUEUED, we need to go FAILED.
+        # However, there's a race where we might fail the run at the
+        # same time the worker started the run making it not see a CANCELLING
+        # status. This uses a trick similar to Run.pop_queued. We set the
+        # run to RUNNING. If we see this change, we can mark it FAILED.
+        # If we don't see the change, its RUNNING and needs CANCELLING.
+        conn = db.session.connection().connection
+        cursor = conn.cursor()
+
+        rows = cursor.execute('''
+            UPDATE runs
+            SET
+                _status = 2
+            WHERE
+                id = {run_id}
+            '''.format(run_id=self.id))
+        db.session.commit()
+        if rows == 1:
+            # It was us
+            self.set_status(BuildStatus.FAILED)
+        else:
+            # Its really running somewhere
+            self.set_status(BuildStatus.CANCELLING)
+        db.session.commit()
+
     def set_status(self, status):
         if isinstance(status, str):
             status = BuildStatus[status]

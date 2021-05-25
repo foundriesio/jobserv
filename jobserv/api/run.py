@@ -255,8 +255,7 @@ def run_rerun(proj, build_id, run):
 def run_cancel(proj, build_id, run):
     r = _get_run(proj, build_id, run)
     permissions.assert_can_build(r.build.project.name)
-    r.set_status(BuildStatus.CANCELLING)
-    db.session.commit()
+    r.cancel()
     return jsendify({}), 202
 
 
