@@ -110,6 +110,16 @@ def build_get_latest(proj):
     return jsendify({'build': b.as_json(detailed=True)})
 
 
+@blueprint.route('/builds/<int:build_id>/cancel', methods=('POST',))
+def build_cancel(proj, build_id):
+    permissions.assert_can_build(proj)
+    p = get_or_404(Project.query.filter_by(name=proj))
+    b = get_or_404(Build.query.filter_by(project=p, build_id=build_id))
+    for r in b.runs:
+        r.cancel()
+    return jsendify({}), 202
+
+
 @blueprint.route('/builds/<int:build_id>/promote', methods=('POST',))
 def build_promote(proj, build_id):
     permissions.assert_can_promote(proj, build_id)
