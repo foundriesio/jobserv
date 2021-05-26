@@ -214,3 +214,25 @@ class BuildAPITest(JobServTest):
         self.assertEqual(BuildStatus.PROMOTED, b.status)
         self.assertEqual(data['name'], b.name)
         self.assertEqual(data['annotation'], b.annotation)
+
+    def test_cancel(self):
+        b = Build.create(self.project)
+        db.session.add(Run(b, 'run0'))
+        r = Run(b, 'run1')
+        r.status = BuildStatus.RUNNING
+        db.session.add(r)
+
+        url = 'http://localhost/projects/proj-1/builds/%d/cancel' % b.build_id
+
+        headers = {
+            'Content-type': 'application/json',
+        }
+        _sign(url, headers, 'POST')
+        self._post(url, '', headers, 202)
+
+        expected = [BuildStatus.FAILED, BuildStatus.CANCELLING]
+        if db.engine.dialect.name == 'sqlite':
+            # sqlite doesn't handle the query properly
+            expected[0] = BuildStatus.CANCELLING
+
+        self.assertEqual(expected, [x.status for x in b.runs])
