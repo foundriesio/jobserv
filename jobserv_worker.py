@@ -160,7 +160,7 @@ class HostProps(object):
     def available_runners():
         locks = None
         try:
-            locks = RunLocks(2)
+            locks = RunLocks(int(config['jobserv']['concurrent_runs']))
             yield locks
         finally:
             if locks:
