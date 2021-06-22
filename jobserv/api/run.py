@@ -55,13 +55,25 @@ def run_get(proj, build_id, run):
 
 
 def _create_triggers(projdef, storage, build, params, secrets, triggers,
-                     parent_type, queue_priority):
+                     parent_trigger, queue_priority):
+    email = parent_trigger.get('email')
+    webhooks = parent_trigger.get('webhooks')
+    upgrade_projdef = False
     for trigger in triggers:
         run_names = trigger.get('run-names')
         trigger = projdef.get_trigger(trigger['name'])
         trigger['run-names'] = run_names
+        if not trigger.get('email') and email:
+            trigger['email'] = email
+            upgrade_projdef = True
+        if not trigger.get('webhooks') and webhooks:
+            trigger['webhooks'] = webhooks
+            upgrade_projdef = True
         trigger_runs(storage, projdef, build, trigger, params, secrets,
-                     parent_type, queue_priority)
+                     parent_trigger['type'], queue_priority)
+    if upgrade_projdef:
+        storage.create_project_definition(
+            build, yaml.dump(projdef._data, default_flow_style=False))
 
 
 def _handle_build_complete(projdef, storage, build, params, secrets, trigger):
@@ -81,7 +93,7 @@ def _handle_build_complete(projdef, storage, build, params, secrets, trigger):
             build_params = storage.get_build_params(build)
             params.update(build_params)
             _create_triggers(projdef, storage, build, params, secrets,
-                             trigger.get('triggers', []), trigger['type'],
+                             triggers, trigger,
                              queue_priority)
             db.session.flush()
             build.refresh_status()
@@ -121,7 +133,7 @@ def _handle_triggers(storage, run):
                 if run.status == BuildStatus.PASSED:
                     _create_triggers(projdef, storage, run.build, params,
                                      secrets, rt.get('triggers', []),
-                                     run_trigger['type'], run.queue_priority)
+                                     run_trigger, run.queue_priority)
                     db.session.refresh(run.build)
                     run.build.refresh_status()
         if run.build.complete:

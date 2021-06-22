@@ -8,6 +8,7 @@ import os
 import shutil
 import tempfile
 from time import sleep
+import yaml
 
 from unittest.mock import Mock, patch
 
@@ -623,38 +624,55 @@ class RunAPITest(JobServTest):
         db.session.refresh(r)
         self.assertEqual(self.build, build_complete.call_args_list[0][0][0])
 
+    @patch('jobserv.api.run.notify_build_complete_email')
     @patch('jobserv.api.run.Storage')
-    def test_build_complete_triggers(self, storage):
-        m = Mock()
-        m.get_project_definition.return_value = json.dumps({
-            'timeout': 5,
-            'triggers': [
-                {
-                    'name': 'github',
-                    'type': 'github_pr',
-                    'runs': [{
-                        'name': 'run0',
-                        'host-tag': 'foo*',
-                    }],
-                    'triggers': [
-                        {'name': 'build-trigger'},
-                    ]
-                },
-                {
-                    'name': 'build-trigger',
-                    'type': 'simple',
-                    'runs': [{
-                        'name': 'test',
-                        'host-tag': 'foo*',
-                        'container': 'container-foo',
-                        'script': 'test',
-                    }],
-                },
-            ],
-            'scripts': {
-                'test': '#test#',
+    def test_build_complete_triggers(self, storage, notify):
+        class MockStorage:
+            projdef = {
+                'timeout': 5,
+                'triggers': [
+                    {
+                        'name': 'github',
+                        'type': 'github_pr',
+                        'email': {
+                            'users': 'help@aol.com',
+                        },
+                        'runs': [{
+                            'name': 'run0',
+                            'host-tag': 'foo*',
+                        }],
+                        'triggers': [
+                            {'name': 'build-trigger'},
+                        ]
+                    },
+                    {
+                        'name': 'build-trigger',
+                        'type': 'simple',
+                        'runs': [{
+                            'name': 'test',
+                            'host-tag': 'foo*',
+                            'container': 'container-foo',
+                            'script': 'test',
+                        }],
+                    },
+                ],
+                'scripts': {
+                    'test': '#test#',
+                }
             }
-        })
+
+            @classmethod
+            def get_projdef(cls, build):
+                return yaml.dump(cls. projdef)
+
+            @classmethod
+            def create_projdef(cls, build, projdef):
+                cls.projdef = yaml.safe_load(projdef)
+
+        m = Mock()
+        m.get_project_definition = MockStorage.get_projdef
+        m.create_project_definition = MockStorage.create_projdef
+
         m.console_logfd.return_value = open('/dev/null', 'w')
         m.get_run_definition.return_value = json.dumps({})
         m.get_build_params.return_value = {'buildparam': '42'}
@@ -679,3 +697,12 @@ class RunAPITest(JobServTest):
         rundef = json.loads(m.set_run_definition.call_args[0][1])
         self.assertEqual('42', rundef['env']['buildparam'])
         self.assertEqual(8675309, run.queue_priority)
+
+        headers[0] = ('Authorization', 'Token %s' % run.api_key)
+        self._post(self.urlbase + 'test/', None, headers, 200)
+        run = Run.query.all()[1]
+        self.assertEqual('test', run.name)
+        self.assertEqual('PASSED', run.status.name)
+        self.assertEqual('PASSED', self.build.status.name)
+
+        notify.assert_called_once_with(self.build, 'help@aol.com')
