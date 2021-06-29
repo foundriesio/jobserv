@@ -288,6 +288,9 @@ class SimpleHandler(object):
                 f.write('machine %s\n' % urllib.parse.urlparse(url).netloc)
                 f.write('login %s\npassword %s\n' % (user, token))
 
+                f.write('machine gilab.com\n')
+                f.write('login %s\npassword %s\n' % (user, token))
+
             token = (self.rundef.get('secrets') or {}).get('bitbuckettok')
             if token:
                 log.info('Creating a bitbucket token entry')
