@@ -283,16 +283,20 @@ class SimpleHandler(object):
             url = (self.rundef.get('script-repo') or {}).get('clone-url')
             token = (self.rundef.get('secrets') or {}).get('gitlabtok')
             if token and url:
-                log.info('Creating a gitlab token entry')
                 user = self.rundef['secrets']['gitlabuser']
-                f.write('machine %s\n' % urllib.parse.urlparse(url).netloc)
-                f.write('login %s\npassword %s\n' % (user, token))
-
-                f.write('machine gilab.com\n')
+                machine = urllib.parse.urlparse(url).netloc
+                if machine != 'github.com':
+                    log.info('Creating a gitlab token entry for %s', machine)
+                    f.write('machine %s\n' % machine)
+                    f.write('login %s\npassword %s\n' % (user, token))
+            if token:
+                log.info('Creating a gitlab.com token entry')
+                f.write('machine gitlab.com\n')
                 f.write('login %s\npassword %s\n' % (user, token))
 
             token = (self.rundef.get('secrets') or {}).get('bitbuckettok')
             if token:
+                user = self.rundef['secrets']['gitlabuser']
                 log.info('Creating a bitbucket token entry')
                 user = self.rundef['secrets']['bitbucketuser']
                 f.write('machine bitbucket.org\n')
