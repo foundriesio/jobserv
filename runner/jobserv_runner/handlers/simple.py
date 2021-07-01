@@ -296,7 +296,6 @@ class SimpleHandler(object):
 
             token = (self.rundef.get('secrets') or {}).get('bitbuckettok')
             if token:
-                user = self.rundef['secrets']['gitlabuser']
                 log.info('Creating a bitbucket token entry')
                 user = self.rundef['secrets']['bitbucketuser']
                 f.write('machine bitbucket.org\n')
