@@ -290,6 +290,7 @@ class SimpleHandler(object):
                     f.write('machine %s\n' % machine)
                     f.write('login %s\npassword %s\n' % (user, token))
             if token:
+                user = self.rundef['secrets']['gitlabuser']
                 log.info('Creating a gitlab.com token entry')
                 f.write('machine gitlab.com\n')
                 f.write('login %s\npassword %s\n' % (user, token))
