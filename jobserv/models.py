@@ -481,6 +481,7 @@ class Run(db.Model, StatusMixin):
         conn = db.session.connection().connection
         cursor = conn.cursor()
 
+        # Find queued(status=1) and running(status=2) runs
         cursor.execute('''
             SELECT
               runs.id, runs.build_id, runs._status,
@@ -503,14 +504,21 @@ class Run(db.Model, StatusMixin):
         sync_projects = {}
         okay_sync_builds = {}
         rows = cursor.fetchall()
+        oldest_build_id = 0
         for (run_id, build_id, status, proj_id, sync, tag) in rows:
+            if not oldest_build_id:
+                oldest_build_id = build_id
             if status == 2 and sync:
                 sync_projects[proj_id] = True
                 okay_sync_builds[build_id] = True
             elif status == 1:
                 for t in tags:
                     if fnmatch.fnmatch(t, tag):
-                        break
+                        # if its a sync build, we have to make sure this worker
+                        # isn't finding work on a newer build that should be
+                        # completed first
+                        if not sync or build_id == oldest_build_id:
+                            break
                 else:
                     continue
                 if not sync or \
