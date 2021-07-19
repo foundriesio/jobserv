@@ -475,15 +475,6 @@ class Run(db.Model, StatusMixin):
 
     @staticmethod
     def pop_queued(worker):
-        # A great read on MySql locking can be found here:
-        # https://www.percona.com/blog/2014/09/11/
-        # openstack-users-shed-light-on-percona-xtradb-cluster-deadlock-issues
-        # The big take-away is that select-for-update isn't a silver bullet.
-        # In fact, with what we are trying to do, its actually going to be more
-        # full-proof to try and update a single row and see if it changed.
-        # If it didn't change, that means we lost a race condition and the
-        # run has been assigned to another worker.
-
         # Forcing 2 queries seems bad, but we have to JOIN on another table
         # and MySQL doesn't allow UPDATEs that do that.
         # So we first find a suitable Run:
