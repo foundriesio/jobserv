@@ -171,6 +171,56 @@ class WorkerAPITest(JobServTest):
         self.assertNotIn('run-defs', data['data']['worker'])
 
     @patch('jobserv.api.worker.Storage')
+    def test_worker_sync_builds_regression(self, storage):
+        """ Make sure scheduler takes into account other active projects for
+            sync builds.
+        """
+        if db.engine.dialect.name == 'sqlite':
+            self.skipTest('Test requires MySQL')
+        rundef = {
+            'run_url': 'foo',
+            'runner_url': 'foo',
+            'env': {}
+        }
+        storage().get_run_definition.return_value = json.dumps(rundef)
+        w = Worker('w1', 'ubuntu', 12, 2, 'aarch64', 'key', 2, ['aarch96'])
+        w.enlisted = True
+        w.online = True
+        db.session.add(w)
+
+        self.create_projects('job-1')
+        self.create_projects('job-2')
+        p1, p2 = Project.query.all()
+        p1.synchronous_builds = True
+        db.session.commit()
+
+        # add active build
+        b = Build.create(p2)
+        r = Run(b, 'p2b1r1')
+        r.status = BuildStatus.RUNNING
+        r.host_tag = 'aarch96'
+        db.session.add(r)
+
+        b = Build.create(p1)
+        r = Run(b, 'p1b1r1')
+        r.host_tag = 'aarch96'
+        db.session.add(r)
+        db.session.commit()
+
+        headers = [
+            ('Content-type', 'application/json'),
+            ('Authorization', 'Token key'),
+        ]
+        qs = 'available_runners=1&foo=2'
+
+        # This should make the p1b1r2 run running
+        resp = self.client.get(
+            '/workers/w1/', headers=headers, query_string=qs)
+        self.assertEqual(200, resp.status_code, resp.data)
+        data = json.loads(resp.data.decode())
+        self.assertEqual(1, len(data['data']['worker']['run-defs']))
+
+    @patch('jobserv.api.worker.Storage')
     def test_worker_sync_builds(self, storage):
         """Ensure Projects with "synchronous_builds" are assigned properly.
 
