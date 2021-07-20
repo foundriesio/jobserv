@@ -9,7 +9,7 @@ from flask import Flask, request
 from flask.json import JSONEncoder
 from flask_migrate import Migrate
 
-from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.routing import UnicodeConverter
 
 from jobserv.settings import PROJECT_NAME_REGEX
