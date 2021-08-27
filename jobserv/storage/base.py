@@ -101,7 +101,7 @@ class BaseStorage(object):
         os.rmdir(os.path.dirname(src))
         try:
             os.rmdir(os.path.dirname(os.path.dirname(src)))
-        except:
+        except Exception:
             pass  # another run is still in progress
 
     def generate_signed(self, run, paths, expiration):

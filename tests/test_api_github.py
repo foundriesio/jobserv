@@ -41,6 +41,6 @@ class ApiTest(JobServTest):
         trigger = mock.Mock()
         trigger.definition_repo = ""
 
-        exp = "Project definition does not exist:.*\.jobserv.yml"
+        exp = r"Project definition does not exist:.*\.jobserv.yml"
         with self.assertRaisesRegex(ValueError, exp):
             _get_proj_def(trigger, "owner", "repo", "sha", "token")
