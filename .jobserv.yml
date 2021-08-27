@@ -4,19 +4,19 @@ triggers:
     type: github_pr
     runs:
       - name: unit-test
-        container: python:3.6-alpine
+        container: python:3.9-alpine
         host-tag: amd64
         script: unit-test
         shared-volumes:
           lmp-bitbake-cache: /lmp-bitbake-cache
 
       - name: flake8
-        container: python:3.6-alpine
+        container: python:3.9-alpine
         host-tag: amd64
         script: flake8
 
       - name: test-progress
-        container: python:3.6-alpine
+        container: python:3.9-alpine
         host-tag: amd64
         script: dumb-progress
         console-progress:
@@ -79,7 +79,7 @@ scripts:
 
   unit-test: |
     #!/bin/sh -ex
-    apk --no-cache add git python3-dev musl-dev g++ openssl libffi-dev openssl-dev
+    apk --no-cache add git python3-dev musl-dev g++ openssl libffi-dev openssl-dev rust cargo
     git config --global user.email "cibot@example.com"
     git config --global user.name "cibot"
 
