@@ -19,13 +19,22 @@ from jobserv.api.worker import blueprint as worker_bp
 from jobserv.jsend import ApiError, jsendify
 
 BLUEPRINTS = (
-    project_bp, project_triggers_bp, build_bp, run_bp, test_bp, test_query_bp,
-    worker_bp, health_bp, github_bp, gitlab_bp,
+    project_bp,
+    project_triggers_bp,
+    build_bp,
+    run_bp,
+    test_bp,
+    test_query_bp,
+    worker_bp,
+    health_bp,
+    github_bp,
+    gitlab_bp,
 )
 
 
 def register_blueprints(app):
     for bp in BLUEPRINTS:
+
         @bp.errorhandler(ApiError)
         def api_error(e):
             return e.resp
@@ -33,23 +42,24 @@ def register_blueprints(app):
         @bp.errorhandler(DataError)
         def data_error(e):
             data = {
-                'message': 'An unexpected error occurred inserting data',
-                'error_msg': str(e),
-                'stack_trace': traceback.format_exc(),
+                "message": "An unexpected error occurred inserting data",
+                "error_msg": str(e),
+                "stack_trace": traceback.format_exc(),
             }
             current_app.logger.exception(
-                'Unexpected DB error caught in BP error handler')
+                "Unexpected DB error caught in BP error handler"
+            )
             return jsendify(data, 400)
 
         @bp.errorhandler(Exception)
         def unexpected_error(e):
             data = {
-                'message': 'An unexpected error occurred',
-                'error_msg': str(e),
-                'stack_trace': traceback.format_exc(),
+                "message": "An unexpected error occurred",
+                "error_msg": str(e),
+                "stack_trace": traceback.format_exc(),
             }
             print(dir(bp))
-            current_app.logger.exception(
-                'Unexpected error caught in BP error handler')
+            current_app.logger.exception("Unexpected error caught in BP error handler")
             return jsendify(data, 500)
+
         app.register_blueprint(bp)

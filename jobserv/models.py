@@ -24,7 +24,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import Comparator, hybrid_property
 
 from jobserv.settings import (
-    BUILD_URL_FMT, JOBS_DIR, RUN_URL_FMT, SECRETS_FERNET_KEY, WORKER_DIR)
+    BUILD_URL_FMT,
+    JOBS_DIR,
+    RUN_URL_FMT,
+    SECRETS_FERNET_KEY,
+    WORKER_DIR,
+)
 from jobserv.stats import StatsClient
 
 db = SQLAlchemy()
@@ -36,7 +41,7 @@ def hack_create_connect_args(*args, **kwargs):
     # http://docs.sqlalchemy.org/en/latest/dialects/mysql.html#rowcount-support
     # The Run.pop_queued code below needs to know if it updated a row or now.
     rv = orig_create(*args, **kwargs)
-    rv[1]['client_flag'] = 0
+    rv[1]["client_flag"] = 0
     return rv
 
 
@@ -45,12 +50,15 @@ mysqldb.MySQLDialect_mysqldb.create_connect_args = hack_create_connect_args
 
 
 def get_cumulative_status(items):
-    '''A helper used by Test and Build to calculate the status based on the
-       status of its child TestResults and Runs.'''
+    """A helper used by Test and Build to calculate the status based on the
+    status of its child TestResults and Runs."""
     status = BuildStatus.QUEUED  # Default guess to QUEUED
     states = set([x.status for x in items])
-    if BuildStatus.RUNNING in states or BuildStatus.UPLOADING in states \
-            or BuildStatus.CANCELLING in states:
+    if (
+        BuildStatus.RUNNING in states
+        or BuildStatus.UPLOADING in states
+        or BuildStatus.CANCELLING in states
+    ):
         # Something is still running
         status = BuildStatus.RUNNING
         if BuildStatus.FAILED in states or BuildStatus.CANCELLING in states:
@@ -71,14 +79,14 @@ def get_cumulative_status(items):
 
 
 class Project(db.Model):
-    __tablename__ = 'projects'
+    __tablename__ = "projects"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True)
 
     synchronous_builds = db.Column(db.Boolean, default=False)
 
-    builds = db.relationship('Build', order_by='-Build.id')
-    triggers = db.relationship('ProjectTrigger')
+    builds = db.relationship("Build", order_by="-Build.id")
+    triggers = db.relationship("ProjectTrigger")
 
     def __init__(self, name=None, synchronous_builds=False):
         self.name = name
@@ -86,18 +94,18 @@ class Project(db.Model):
 
     def as_json(self, detailed=False):
         data = {
-            'name': self.name,
-            'synchronous-builds': self.synchronous_builds,
-            'url': url_for(
-                'api_project.project_get', proj=self.name, _external=True),
+            "name": self.name,
+            "synchronous-builds": self.synchronous_builds,
+            "url": url_for("api_project.project_get", proj=self.name, _external=True),
         }
         if detailed:
-            data['builds_url'] = url_for(
-                'api_build.build_list', proj=self.name, _external=True)
+            data["builds_url"] = url_for(
+                "api_build.build_list", proj=self.name, _external=True
+            )
         return data
 
     def __repr__(self):
-        return '<Project %s>' % self.name
+        return "<Project %s>" % self.name
 
 
 class TriggerTypes(enum.Enum):
@@ -111,7 +119,7 @@ class TriggerTypes(enum.Enum):
 
 
 class ProjectTrigger(db.Model):
-    __tablname__ = 'triggers'
+    __tablname__ = "triggers"
     id = db.Column(db.Integer, primary_key=True)
     user = db.Column(db.String(128), nullable=False)
     type = db.Column(db.Integer)
@@ -136,22 +144,21 @@ class ProjectTrigger(db.Model):
 
     def as_json(self):
         return {
-            'id': self.id,
-            'user': self.user,
-            'type': TriggerTypes(self.type).name,
-            'project': self.project.name,
-            'definition_repo': self.definition_repo,
-            'definition_file': self.definition_file or None,
-            'queue_priority': self.queue_priority or 0,
-            'secrets': self.secret_data,
+            "id": self.id,
+            "user": self.user,
+            "type": TriggerTypes(self.type).name,
+            "project": self.project.name,
+            "definition_repo": self.definition_repo,
+            "definition_file": self.definition_file or None,
+            "queue_priority": self.queue_priority or 0,
+            "secrets": self.secret_data,
         }
 
     @classmethod
     def _init_fernet(clazz):
         if not clazz.fernet:
             if not SECRETS_FERNET_KEY:
-                raise ValueError(
-                    'Missing environment value: SECRETS_FERNET_KEY')
+                raise ValueError("Missing environment value: SECRETS_FERNET_KEY")
             clazz.fernet = Fernet(SECRETS_FERNET_KEY.encode())
 
     @property
@@ -161,24 +168,23 @@ class ProjectTrigger(db.Model):
             return self._secret_data
         except AttributeError:
             s = self.fernet.decrypt(self.secrets.encode()).decode()
-            self._secret_data = json.loads(s or '{}')
+            self._secret_data = json.loads(s or "{}")
             return self._secret_data
 
     def update_secrets(self):
         assert type(self._secret_data) == dict
         for k, v in self._secret_data.items():
             if type(k) != str:
-                raise ValueError('Invalid secret name: %r' % k)
+                raise ValueError("Invalid secret name: %r" % k)
             if type(v) != str:
-                raise ValueError('Invalid secret value(%s): %r' % (k, v))
+                raise ValueError("Invalid secret value(%s): %r" % (k, v))
         self._init_fernet()
         self.secrets = self.fernet.encrypt(
             json.dumps(self._secret_data).encode()
         ).decode()
 
     def __repr__(self):
-        return '<Trigger %s: %s>' % (
-            self.project.name, TriggerTypes(self.type).name)
+        return "<Trigger %s: %s>" % (self.project.name, TriggerTypes(self.type).name)
 
 
 class BuildStatus(enum.Enum):
@@ -204,10 +210,11 @@ class StatusComparator(Comparator):
 
 
 class StatusMixin(object):
-    '''Using ENUM columns in the Database can be a real pain and difficult
-       to provide migration logic for. This hack makes the column feel just
-       like an ENUM in sqlalchemy but stores the column as an Integer.
-    '''
+    """Using ENUM columns in the Database can be a real pain and difficult
+    to provide migration logic for. This hack makes the column feel just
+    like an ENUM in sqlalchemy but stores the column as an Integer.
+    """
+
     @hybrid_property
     def status(self):
         return BuildStatus(self._status)
@@ -226,17 +233,19 @@ class StatusMixin(object):
     @property
     def complete(self):
         return self._status in (
-            BuildStatus.PASSED.value, BuildStatus.FAILED.value,
-            BuildStatus.PROMOTED.value, BuildStatus.SKIPPED.value)
+            BuildStatus.PASSED.value,
+            BuildStatus.FAILED.value,
+            BuildStatus.PROMOTED.value,
+            BuildStatus.SKIPPED.value,
+        )
 
     @contextlib.contextmanager
     def locked(self):
-        '''Provide a distributed lock that can be used to provide sequential
-           updates to certain operations like Run and Test status.
-        '''
-        lockname = os.path.join(
-            JOBS_DIR, '%s-%d' % (self.__class__.__name__, self.id))
-        with open(lockname, 'a') as f:
+        """Provide a distributed lock that can be used to provide sequential
+        updates to certain operations like Run and Test status.
+        """
+        lockname = os.path.join(JOBS_DIR, "%s-%d" % (self.__class__.__name__, self.id))
+        with open(lockname, "a") as f:
             fcntl.flock(f, fcntl.LOCK_EX)
             # force a clean session so that updates from another thread will
             # be pulled in
@@ -248,7 +257,7 @@ class StatusMixin(object):
 
 
 class Build(db.Model, StatusMixin):
-    __tablename__ = 'builds'
+    __tablename__ = "builds"
     id = db.Column(db.Integer, primary_key=True)
 
     build_id = db.Column(db.Integer, nullable=False)
@@ -261,14 +270,14 @@ class Build(db.Model, StatusMixin):
     annotation = db.Column(db.Text())
 
     project = db.relationship(Project)
-    runs = db.relationship('Run', order_by='Run.id',
-                           cascade='save-update, merge, delete')
-    status_events = db.relationship('BuildEvents', order_by='BuildEvents.id',
-                                    cascade='save-update, merge, delete')
-
-    __table_args__ = (
-        db.UniqueConstraint('proj_id', 'build_id', name='build_id_uc'),
+    runs = db.relationship(
+        "Run", order_by="Run.id", cascade="save-update, merge, delete"
     )
+    status_events = db.relationship(
+        "BuildEvents", order_by="BuildEvents.id", cascade="save-update, merge, delete"
+    )
+
+    __table_args__ = (db.UniqueConstraint("proj_id", "build_id", name="build_id_uc"),)
 
     def __init__(self, project, build_id):
         self.proj_id = project.id
@@ -276,33 +285,42 @@ class Build(db.Model, StatusMixin):
         self.status = BuildStatus.QUEUED
 
     def as_json(self, detailed=False):
-        url = url_for('api_build.build_get', proj=self.project.name,
-                      build_id=self.build_id, _external=True)
+        url = url_for(
+            "api_build.build_get",
+            proj=self.project.name,
+            build_id=self.build_id,
+            _external=True,
+        )
         data = {
-            'build_id': self.build_id,
-            'url': url,
-            'status': self.status.name,
-            'runs': [x.as_json() for x in self.runs],
+            "build_id": self.build_id,
+            "url": url,
+            "status": self.status.name,
+            "runs": [x.as_json() for x in self.runs],
         }
         if BUILD_URL_FMT:
-            data['web_url'] = BUILD_URL_FMT.format(
-                project=self.project.name, build=self.build_id)
+            data["web_url"] = BUILD_URL_FMT.format(
+                project=self.project.name, build=self.build_id
+            )
         if self.name:
-            data['name'] = self.name
+            data["name"] = self.name
         if self.trigger_name:
-            data['trigger_name'] = self.trigger_name
+            data["trigger_name"] = self.trigger_name
         if self.status_events:
-            data['created'] = self.status_events[0].time
+            data["created"] = self.status_events[0].time
             if self.complete:
-                data['completed'] = self.status_events[-1].time
+                data["completed"] = self.status_events[-1].time
         if detailed:
-            data['status_events'] = [{'time': x.time, 'status': x.status.name}
-                                     for x in self.status_events]
-            data['runs_url'] = url_for(
-                'api_run.run_list', proj=self.project.name,
-                build_id=self.build_id, _external=True)
-            data['reason'] = self.reason
-            data['annotation'] = self.annotation
+            data["status_events"] = [
+                {"time": x.time, "status": x.status.name} for x in self.status_events
+            ]
+            data["runs_url"] = url_for(
+                "api_run.run_list",
+                proj=self.project.name,
+                build_id=self.build_id,
+                _external=True,
+            )
+            data["reason"] = self.reason
+            data["annotation"] = self.annotation
         return data
 
     def refresh_status(self):
@@ -312,13 +330,13 @@ class Build(db.Model, StatusMixin):
             db.session.add(BuildEvents(self, status))
 
     def __repr__(self):
-        return '<Build %d/%d: %s>' % (
-            self.proj_id, self.build_id, self.status.name)
+        return "<Build %d/%d: %s>" % (self.proj_id, self.build_id, self.status.name)
 
     @classmethod
     def _try_build_ids(clazz, project):
-        last = clazz.query.filter_by(
-            proj_id=project.id).order_by(-clazz.build_id).first()
+        last = (
+            clazz.query.filter_by(proj_id=project.id).order_by(-clazz.build_id).first()
+        )
         try_build_id = 1
         if last:
             try_build_id = last.build_id + 1
@@ -345,7 +363,7 @@ class Build(db.Model, StatusMixin):
 
 
 class BuildEvents(db.Model, StatusMixin):
-    __tablename__ = 'build_events'
+    __tablename__ = "build_events"
 
     id = db.Column(db.Integer, primary_key=True)
     time = db.Column(db.DateTime)
@@ -358,11 +376,11 @@ class BuildEvents(db.Model, StatusMixin):
         self.time = datetime.datetime.utcnow()
 
     def __repr__(self):
-        return '<Status %s: %s>' % (self.time, self.status.name)
+        return "<Status %s: %s>" % (self.time, self.status.name)
 
 
 class Run(db.Model, StatusMixin):
-    __tablename__ = 'runs'
+    __tablename__ = "runs"
     id = db.Column(db.Integer, primary_key=True)
 
     build_id = db.Column(db.Integer, db.ForeignKey(Build.id), nullable=False)
@@ -372,22 +390,24 @@ class Run(db.Model, StatusMixin):
     trigger = db.Column(db.String(80))
     meta = db.Column(db.String(1024))
 
-    worker_name = db.Column(db.String(512), db.ForeignKey('workers.name'))
+    worker_name = db.Column(db.String(512), db.ForeignKey("workers.name"))
     queue_priority = db.Column(db.Integer)  # bigger is more important
 
     host_tag = db.Column(db.String(1024))
 
     build = db.relationship(Build)
-    status_events = db.relationship('RunEvents', order_by='RunEvents.id',
-                                    cascade='save-update, merge, delete')
+    status_events = db.relationship(
+        "RunEvents", order_by="RunEvents.id", cascade="save-update, merge, delete"
+    )
 
-    tests = db.relationship('Test', order_by='Test.id',
-                            cascade='save-update, merge, delete')
-    worker = db.relationship('Worker')
+    tests = db.relationship(
+        "Test", order_by="Test.id", cascade="save-update, merge, delete"
+    )
+    worker = db.relationship("Worker")
 
     __table_args__ = (
         # can't have the same named run for a single build
-        db.UniqueConstraint('build_id', 'name', name='run_name_uc'),
+        db.UniqueConstraint("build_id", "name", name="run_name_uc"),
     )
 
     def __init__(self, build, name, trigger=None, queue_priority=0):
@@ -396,41 +416,60 @@ class Run(db.Model, StatusMixin):
         self.trigger = trigger
         self.status = BuildStatus.QUEUED
         self.queue_priority = queue_priority
-        self.api_key = ''.join(random.SystemRandom().choice(
-            string.ascii_lowercase + string.ascii_uppercase + string.digits)
-            for _ in range(32))
+        self.api_key = "".join(
+            random.SystemRandom().choice(
+                string.ascii_lowercase + string.ascii_uppercase + string.digits
+            )
+            for _ in range(32)
+        )
 
     def as_json(self, detailed=False):
         b = self.build
         p = b.project
-        url = url_for('api_run.run_get', proj=p.name, build_id=b.build_id,
-                      run=self.name, _external=True)
-        log = url_for('api_run.run_get_artifact', proj=p.name,
-                      build_id=b.build_id, run=self.name, path='console.log',
-                      _external=True)
+        url = url_for(
+            "api_run.run_get",
+            proj=p.name,
+            build_id=b.build_id,
+            run=self.name,
+            _external=True,
+        )
+        log = url_for(
+            "api_run.run_get_artifact",
+            proj=p.name,
+            build_id=b.build_id,
+            run=self.name,
+            path="console.log",
+            _external=True,
+        )
         data = {
-            'name': self.name,
-            'url': url,
-            'status': self.status.name,
-            'log_url': log,
+            "name": self.name,
+            "url": url,
+            "status": self.status.name,
+            "log_url": log,
         }
         if RUN_URL_FMT:
-            data['web_url'] = RUN_URL_FMT.format(
-                project=p.name, build=b.build_id, run=self.name)
+            data["web_url"] = RUN_URL_FMT.format(
+                project=p.name, build=b.build_id, run=self.name
+            )
         if self.status_events:
-            data['created'] = self.status_events[0].time
+            data["created"] = self.status_events[0].time
             if self.complete:
-                data['completed'] = self.status_events[-1].time
+                data["completed"] = self.status_events[-1].time
         if self.host_tag:
-            data['host_tag'] = self.host_tag
+            data["host_tag"] = self.host_tag
         if self.tests:
-            data['tests'] = url_for(
-                'api_test.test_list', proj=p.name, build_id=b.build_id,
-                run=self.name, _external=True)
+            data["tests"] = url_for(
+                "api_test.test_list",
+                proj=p.name,
+                build_id=b.build_id,
+                run=self.name,
+                _external=True,
+            )
         if detailed:
-            data['worker_name'] = self.worker_name
-            data['status_events'] = [{'time': x.time, 'status': x.status.name}
-                                     for x in self.status_events]
+            data["worker_name"] = self.worker_name
+            data["status_events"] = [
+                {"time": x.time, "status": x.status.name} for x in self.status_events
+            ]
         return data
 
     def cancel(self):
@@ -444,13 +483,17 @@ class Run(db.Model, StatusMixin):
         conn = db.session.connection().connection
         cursor = conn.cursor()
 
-        rows = cursor.execute('''
+        rows = cursor.execute(
+            """
             UPDATE runs
             SET
                 _status = 2
             WHERE
                 id = {run_id}
-            '''.format(run_id=self.id))
+            """.format(
+                run_id=self.id
+            )
+        )
         db.session.commit()
         if rows == 1:
             # It was us
@@ -470,8 +513,7 @@ class Run(db.Model, StatusMixin):
             db.session.add(RunEvents(self, status))
 
     def __repr__(self):
-        return '<Run %s: %s>' % (
-            self.name, self.status.name)
+        return "<Run %s: %s>" % (self.name, self.status.name)
 
     @staticmethod
     def pop_queued(worker):
@@ -482,7 +524,8 @@ class Run(db.Model, StatusMixin):
         cursor = conn.cursor()
 
         # Find queued(status=1) and running(status=2) runs
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT
               runs.id, runs.build_id, runs._status,
               projects.id, projects.synchronous_builds, runs.host_tag
@@ -494,9 +537,10 @@ class Run(db.Model, StatusMixin):
               ORDER BY
                 runs._status DESC, runs.queue_priority DESC,
                 runs.build_id ASC, runs.id ASC
-            ''')
+            """
+        )
 
-        tags = [worker.name] + [x.strip() for x in worker.host_tags.split(',')]
+        tags = [worker.name] + [x.strip() for x in worker.host_tags.split(",")]
         # By ordering the query above by Run._status, we'll get the active
         # runs first so that we can build up this list of build ids that are
         # active for synchronous projects runs with these build ids are okay
@@ -520,9 +564,11 @@ class Run(db.Model, StatusMixin):
                             break
                 else:
                     continue
-                if not sync or \
-                        build_id in okay_sync_builds or \
-                        proj_id not in sync_projects:
+                if (
+                    not sync
+                    or build_id in okay_sync_builds
+                    or proj_id not in sync_projects
+                ):
                     break
         else:
             # No run found to schedule
@@ -534,13 +580,17 @@ class Run(db.Model, StatusMixin):
         # the second worker won't see a row change, and won't schedule anything
         # This means the worker will have to check in again to find work
         # (if any)
-        rows = cursor.execute('''
+        rows = cursor.execute(
+            """
             UPDATE runs
             SET
                 _status = 2
             WHERE
                 id = {run_id}
-            '''.format(run_id=run_id))
+            """.format(
+                run_id=run_id
+            )
+        )
         db.session.commit()
         if rows == 1:
             r = Run.query.get(run_id)
@@ -552,7 +602,7 @@ class Run(db.Model, StatusMixin):
 
 
 class RunEvents(db.Model, StatusMixin):
-    __tablename__ = 'run_events'
+    __tablename__ = "run_events"
 
     id = db.Column(db.Integer, primary_key=True)
     time = db.Column(db.DateTime)
@@ -565,11 +615,11 @@ class RunEvents(db.Model, StatusMixin):
         self.time = datetime.datetime.utcnow()
 
     def __repr__(self):
-        return '<Status %s: %s>' % (self.time, self.status.name)
+        return "<Status %s: %s>" % (self.time, self.status.name)
 
 
 class Test(db.Model, StatusMixin):
-    __tablename__ = 'tests'
+    __tablename__ = "tests"
 
     id = db.Column(db.Integer, primary_key=True)
     run_id = db.Column(db.Integer, db.ForeignKey(Run.id), nullable=False)
@@ -579,8 +629,9 @@ class Test(db.Model, StatusMixin):
     _status = db.Column(db.Integer)
 
     run = db.relationship(Run)
-    results = db.relationship('TestResult', order_by='TestResult.id',
-                              cascade='save-update, merge, delete')
+    results = db.relationship(
+        "TestResult", order_by="TestResult.id", cascade="save-update, merge, delete"
+    )
 
     def __init__(self, run, name, context, status=BuildStatus.QUEUED):
         self.run_id = run.id
@@ -593,25 +644,33 @@ class Test(db.Model, StatusMixin):
         r = self.run
         b = r.build
         p = b.project
-        url = url_for('api_test.test_get', proj=p.name, build_id=b.build_id,
-                      run=self.run.name, test=self.name, _external=True)
+        url = url_for(
+            "api_test.test_get",
+            proj=p.name,
+            build_id=b.build_id,
+            run=self.run.name,
+            test=self.name,
+            _external=True,
+        )
         data = {
-            'name': self.name,
-            'url': url,
-            'status': self.status.name,
-            'context': self.context,
-            'created': self.created,
+            "name": self.name,
+            "url": url,
+            "status": self.status.name,
+            "context": self.context,
+            "created": self.created,
         }
         if detailed:
             results = []
-            data['results'] = results
+            data["results"] = results
             for x in self.results:
-                results.append({
-                    'name': x.name,
-                    'context': x.context,
-                    'status': x.status.name,
-                    'output': x.output,
-                })
+                results.append(
+                    {
+                        "name": x.name,
+                        "context": x.context,
+                        "status": x.status.name,
+                        "output": x.output,
+                    }
+                )
         return data
 
     def set_status(self, status):
@@ -629,12 +688,11 @@ class Test(db.Model, StatusMixin):
         return super().complete
 
     def __repr__(self):
-        return '<Test %s: %s>' % (
-            self.name, self.status.name)
+        return "<Test %s: %s>" % (self.name, self.status.name)
 
 
 class TestResult(db.Model, StatusMixin):
-    __tablename__ = 'test_results'
+    __tablename__ = "test_results"
 
     id = db.Column(db.Integer, primary_key=True)
     test_id = db.Column(db.Integer, db.ForeignKey(Test.id), nullable=False)
@@ -643,8 +701,7 @@ class TestResult(db.Model, StatusMixin):
     _status = db.Column(db.Integer)
     output = db.Column(db.Text())
 
-    def __init__(self, test, name, context,
-                 status=BuildStatus.QUEUED, output=None):
+    def __init__(self, test, name, context, status=BuildStatus.QUEUED, output=None):
         self.test_id = test.id
         self.name = name
         self.context = context
@@ -652,17 +709,16 @@ class TestResult(db.Model, StatusMixin):
         maxlen = 65535
         if output and len(output) > maxlen:
             # truncate for db
-            prefix = '<truncated>\n'
-            output = prefix + output[:maxlen - len(prefix)]
+            prefix = "<truncated>\n"
+            output = prefix + output[: maxlen - len(prefix)]
         self.output = output
 
     def __repr__(self):
-        return '<TestResult %s: %s>' % (
-            self.name, self.status.name)
+        return "<TestResult %s: %s>" % (self.name, self.status.name)
 
 
 class Worker(db.Model):
-    __tablename__ = 'workers'
+    __tablename__ = "workers"
 
     name = db.Column(db.String(512), primary_key=True)
     distro = db.Column(db.String(1024), nullable=False)
@@ -680,8 +736,17 @@ class Worker(db.Model):
     # flag allows us to exclude them from the api
     deleted = db.Column(db.Boolean, default=False)
 
-    def __init__(self, name, distro, mem_total, cpu_total, cpu_type, api_key,
-                 concurrent_runs, host_tags):
+    def __init__(
+        self,
+        name,
+        distro,
+        mem_total,
+        cpu_total,
+        cpu_type,
+        api_key,
+        concurrent_runs,
+        host_tags,
+    ):
         self.name = name
         self.distro = distro
         self.mem_total = mem_total
@@ -690,7 +755,7 @@ class Worker(db.Model):
         self.api_key = bcrypt.hashpw(api_key.encode(), bcrypt.gensalt())
         self.concurrent_runs = concurrent_runs
         if isinstance(host_tags, list):
-            self.host_tags = ','.join(host_tags)
+            self.host_tags = ",".join(host_tags)
         else:
             self.host_tags = host_tags
         self.online = True
@@ -702,51 +767,51 @@ class Worker(db.Model):
         return bcrypt.checkpw(key.encode(), self.api_key.encode())
 
     def __repr__(self):
-        return '<Worker %s - %s/%s>' % (self.name, self.online, self.enlisted)
+        return "<Worker %s - %s/%s>" % (self.name, self.online, self.enlisted)
 
     def as_json(self, detailed=False):
-        url = url_for('api_worker.worker_get', name=self.name, _external=True)
+        url = url_for("api_worker.worker_get", name=self.name, _external=True)
         return {
-            'name': self.name,
-            'url': url,
-            'distro': self.distro,
-            'mem_total': self.mem_total,
-            'cpu_total': self.cpu_total,
-            'cpu_type': self.cpu_type,
-            'enlisted': self.enlisted,
-            'concurrent_runs': self.concurrent_runs,
-            'host_tags': [x for x in self.host_tags.split(',')],
-            'online': self.online,
-            'surges_only': self.surges_only,
+            "name": self.name,
+            "url": url,
+            "distro": self.distro,
+            "mem_total": self.mem_total,
+            "cpu_total": self.cpu_total,
+            "cpu_type": self.cpu_type,
+            "enlisted": self.enlisted,
+            "concurrent_runs": self.concurrent_runs,
+            "host_tags": [x for x in self.host_tags.split(",")],
+            "online": self.online,
+            "surges_only": self.surges_only,
         }
 
     def in_queue_surge(self):
-        '''We have some workers that we only want to use when the backlog
-        gets big.'''
-        for tag in self.host_tags.split(','):
-            surge = os.path.join(WORKER_DIR, 'enable_surge-' + tag.strip())
+        """We have some workers that we only want to use when the backlog
+        gets big."""
+        for tag in self.host_tags.split(","):
+            surge = os.path.join(WORKER_DIR, "enable_surge-" + tag.strip())
             if os.path.exists(surge):
                 return True
         return False
 
     @property
     def available(self):
-        '''Returns True if the worker should be able to accept runs.'''
+        """Returns True if the worker should be able to accept runs."""
         if self.enlisted and not self.deleted:
             if not self.surges_only or self.in_queue_surge():
                 return True
         return False
 
     def log_event(self, payload):
-        logfile = os.path.join(WORKER_DIR, self.name, 'events.log')
+        logfile = os.path.join(WORKER_DIR, self.name, "events.log")
         if not os.path.exists(logfile):
             os.makedirs(os.path.dirname(logfile))
-        with open(logfile, 'a') as f:
+        with open(logfile, "a") as f:
             f.write(json.dumps(payload))
 
     @property
     def pings_log(self):
-        return os.path.join(WORKER_DIR, self.name, 'pings.log')
+        return os.path.join(WORKER_DIR, self.name, "pings.log")
 
     def ping(self, **kwargs):
         if not self.online:
@@ -758,12 +823,12 @@ class Worker(db.Model):
         if not os.path.exists(path):
             os.makedirs(os.path.dirname(path))
         now = time.time()
-        vals = ','.join(['%s=%s' % (k, v) for k, v in kwargs.items()])
-        with open(path, 'a') as f:
-            f.write('%d: %s\n' % (now, vals))
+        vals = ",".join(["%s=%s" % (k, v) for k, v in kwargs.items()])
+        with open(path, "a") as f:
+            f.write("%d: %s\n" % (now, vals))
         try:
             # this is a no-op if unconfigured
             with StatsClient() as c:
                 c.worker_ping(self, now, kwargs)
         except Exception:
-            logging.exception('Unable to update metrics for ' + self.name)
+            logging.exception("Unable to update metrics for " + self.name)

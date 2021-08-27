@@ -23,32 +23,32 @@ class LoggerTest(TestCase):
         log = TestLogger(None)
         log.now = datetime.datetime.utcnow()
 
-        getattr(log, level)('foo %s', 'bar')
-        expected = '   %s: %-5s foo bar\n' % (log.now, level.upper())
+        getattr(log, level)("foo %s", "bar")
+        expected = "   %s: %-5s foo bar\n" % (log.now, level.upper())
         self.assertEqual(expected, log.io.getvalue())
 
     def test_info(self):
-        self._test_log('info')
+        self._test_log("info")
 
     def test_warn(self):
-        self._test_log('warn')
+        self._test_log("warn")
 
     def test_error(self):
-        self._test_log('error')
+        self._test_log("error")
 
     def test_exec(self):
-        log = TestLogger('test_exec')
+        log = TestLogger("test_exec")
         log.now = datetime.datetime.utcnow()
         with self.assertRaises(RuntimeError):
             with log:
                 raise RuntimeError()
-        self.assertIn('|    raise RuntimeError', log.io.getvalue())
+        self.assertIn("|    raise RuntimeError", log.io.getvalue())
 
     def test_exec_cancelled(self):
-        log = TestLogger('test_exec_cancelled')
+        log = TestLogger("test_exec_cancelled")
         log.now = datetime.datetime.utcnow()
         with self.assertRaises(RunCancelledError):
             with log:
                 raise RunCancelledError()
-        expected = '== %s: test_exec_cancelled\n' % log.now
+        expected = "== %s: test_exec_cancelled\n" % log.now
         self.assertEqual(expected, log.io.getvalue())

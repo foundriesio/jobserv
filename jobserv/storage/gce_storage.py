@@ -12,13 +12,13 @@ from google.cloud.exceptions import NotFound
 from jobserv.settings import GCE_BUCKET
 from jobserv.storage.base import BaseStorage
 
-log = logging.getLogger('jobserv.flask')
+log = logging.getLogger("jobserv.flask")
 
 
 class Storage(BaseStorage):
     def __init__(self):
         super().__init__()
-        creds_file = os.environ.get('GCE_CREDS')
+        creds_file = os.environ.get("GCE_CREDS")
         if creds_file:
             client = storage.Client.from_service_account_json(creds_file)
         else:
@@ -31,7 +31,7 @@ class Storage(BaseStorage):
 
     def _create_from_file(self, storage_path, filename, content_type):
         b = self.bucket.blob(storage_path)
-        with open(filename, 'rb') as f:
+        with open(filename, "rb") as f:
             b.upload_from_file(f, content_type=content_type)
 
     def _get_raw(self, storage_path):
@@ -44,21 +44,24 @@ class Storage(BaseStorage):
         return self._get_raw(storage_path).decode()
 
     def list_artifacts(self, run):
-        name = '%s/%s/%s/' % (
-            run.build.project.name, run.build.build_id, run.name)
-        return [x.name[len(name):]
-                for x in self.bucket.list_blobs(prefix=name)
-                if not x.name.endswith('.rundef.json')]
+        name = "%s/%s/%s/" % (run.build.project.name, run.build.build_id, run.name)
+        return [
+            x.name[len(name) :]
+            for x in self.bucket.list_blobs(prefix=name)
+            if not x.name.endswith(".rundef.json")
+        ]
 
     def _generate_put_url(self, run, path, expiration, content_type):
         b = self.bucket.blob(self._get_run_path(run, path))
         return b.generate_signed_url(
-            expiration=expiration, method='PUT', content_type=content_type)
+            expiration=expiration, method="PUT", content_type=content_type
+        )
 
     def get_download_response(self, request, run, path):
-        expiration = int(request.headers.get('X-EXPIRATION', '90'))
+        expiration = int(request.headers.get("X-EXPIRATION", "90"))
         b = self.bucket.blob(self._get_run_path(run, path))
         expiration = datetime.timedelta(seconds=expiration)
-        rd = 'inline; filename=%s' % os.path.basename(path)
-        return redirect(b.generate_signed_url(
-            expiration=expiration, response_disposition=rd))
+        rd = "inline; filename=%s" % os.path.basename(path)
+        return redirect(
+            b.generate_signed_url(expiration=expiration, response_disposition=rd)
+        )
