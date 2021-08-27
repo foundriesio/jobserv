@@ -90,7 +90,7 @@ def worker_get(name):
                         f.write("# Run sent to worker: %s\n" % name)
                     data["run-defs"] = [_fix_run_urls(s.get_run_definition(r))]
                     r.build.refresh_status()
-                except:
+                except Exception:
                     r.worker = None
                     r.status = "QUEUED"
                     db.session.commit()

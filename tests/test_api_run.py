@@ -419,7 +419,7 @@ class RunAPITest(JobServTest):
         """
         rundef = {
             "test-grepping": {
-                "result-pattern": "\s*(?P<name>\S+): "
+                "result-pattern": r"\s*(?P<name>\S+): "
                 "(?P<result>(PASSED|FAILED|foo))",
                 "fixupdict": {"foo": "PASSED"},
             }
@@ -479,8 +479,8 @@ class RunAPITest(JobServTest):
         """
         rundef = {
             "test-grepping": {
-                "test-pattern": ".*Starting Test: (?P<name>\S+)...",
-                "result-pattern": "\s*(?P<name>\S+): "
+                "test-pattern": r".*Starting Test: (?P<name>\S+)...",
+                "result-pattern": r"\s*(?P<name>\S+): "
                 "(?P<result>(PASSED|FAILED|foo))",
                 "fixupdict": {"foo": "PASSED"},
             }
