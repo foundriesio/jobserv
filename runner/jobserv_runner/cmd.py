@@ -9,13 +9,16 @@ import time
 
 
 def _cmd_output(cmd, cwd=None, env=None):
-    '''Simple non-blocking way to stream the output of a command'''
+    """Simple non-blocking way to stream the output of a command"""
     poller = select.poll()
     p = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         stdin=subprocess.DEVNULL,
         cwd=cwd,
-        env=env)
+        env=env,
+    )
 
     fds = [p.stdout.fileno()]
     for fd in fds:
@@ -30,7 +33,7 @@ def _cmd_output(cmd, cwd=None, env=None):
             timeouts += 1
             if timeouts == 300:
                 # we've gone 5 minutes without output
-                msg = '== %s: cmd seems hung\n' % datetime.datetime.utcnow()
+                msg = "== %s: cmd seems hung\n" % datetime.datetime.utcnow()
                 yield msg.encode()
                 timeouts = 0  # give a chance to warn again in another 5
         for fd, event in ready:
@@ -40,8 +43,10 @@ def _cmd_output(cmd, cwd=None, env=None):
                 poller.unregister(fd)
                 fds.remove(fd)
             else:
-                msg = '== %s: unexpected poll event: %r\n' % (
-                    datetime.datetime.utcnow(), event)
+                msg = "== %s: unexpected poll event: %r\n" % (
+                    datetime.datetime.utcnow(),
+                    event,
+                )
                 yield msg.encode()
     p.wait()
     p.stdout.close()
@@ -51,7 +56,7 @@ def _cmd_output(cmd, cwd=None, env=None):
 
 def stream_cmd(stream_cb, cmd, cwd=None, env=None):
     last_update = 0
-    last_buff = b''
+    last_buff = b""
     try:
         for buff in _cmd_output(cmd, cwd, env):
             now = time.time()
@@ -60,7 +65,7 @@ def stream_cmd(stream_cb, cmd, cwd=None, env=None):
                 if not stream_cb(last_buff + buff):
                     last_buff += buff
                 else:
-                    last_buff = b''
+                    last_buff = b""
                     last_update = now
             else:
                 last_buff += buff

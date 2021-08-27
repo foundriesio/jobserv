@@ -10,14 +10,14 @@ import mimetypes
 
 from jobserv.settings import JOBS_DIR
 
-log = logging.getLogger('jobserv.flask')
+log = logging.getLogger("jobserv.flask")
 
 
 class BaseStorage(object):
     blueprint = None
 
     def __init__(self):
-        mimetypes.add_type('text/plain', '.log')
+        mimetypes.add_type("text/plain", ".log")
 
     def _create_from_string(self, storage_path, contents):
         raise NotImplementedError()
@@ -41,28 +41,27 @@ class BaseStorage(object):
         raise NotImplementedError()
 
     def _get_run_path(self, run, path=None):
-        name = '%s/%s/%s/' % (
-            run.build.project.name, run.build.build_id, run.name)
+        name = "%s/%s/%s/" % (run.build.project.name, run.build.build_id, run.name)
         if path:
-            if path[0] == '/':
+            if path[0] == "/":
                 path = path[1:]
             return name + path
         return name
 
     def create_project_definition(self, build, projdef):
-        name = '%s/%s/project.yml' % (build.project.name, build.build_id)
+        name = "%s/%s/project.yml" % (build.project.name, build.build_id)
         self._create_from_string(name, projdef)
 
     def get_project_definition(self, build):
-        name = '%s/%s/project.yml' % (build.project.name, build.build_id)
+        name = "%s/%s/project.yml" % (build.project.name, build.build_id)
         return self._get_as_string(name)
 
     def create_build_params(self, build, params):
-        name = '%s/%s/params.json' % (build.project.name, build.build_id)
+        name = "%s/%s/params.json" % (build.project.name, build.build_id)
         self._create_from_string(name, json.dumps(params))
 
     def get_build_params(self, build):
-        name = '%s/%s/params.json' % (build.project.name, build.build_id)
+        name = "%s/%s/params.json" % (build.project.name, build.build_id)
         return json.loads(self._get_as_string(name))
 
     def get_artifact_content(self, run, path, decoded=True):
@@ -71,15 +70,15 @@ class BaseStorage(object):
         return self._get_as_string(self._get_run_path(run, path))
 
     def set_run_definition(self, run, definition):
-        path = self._get_run_path(run, '.rundef.json')
+        path = self._get_run_path(run, ".rundef.json")
         self._create_from_string(path, definition)
 
     def get_run_definition(self, run):
-        return self._get_as_string(self._get_run_path(run, '.rundef.json'))
+        return self._get_as_string(self._get_run_path(run, ".rundef.json"))
 
-    def console_logfd(self, run, mode='r'):
-        path = os.path.join(JOBS_DIR, self._get_run_path(run, 'console.log'))
-        if mode[0] in ('a', 'w') and not os.path.exists(path):
+    def console_logfd(self, run, mode="r"):
+        path = os.path.join(JOBS_DIR, self._get_run_path(run, "console.log"))
+        if mode[0] in ("a", "w") and not os.path.exists(path):
             try:
                 os.makedirs(os.path.dirname(path))
             except FileExistsError:
@@ -87,14 +86,15 @@ class BaseStorage(object):
         return open(path, mode)
 
     def copy_log(self, run):
-        src = os.path.join(JOBS_DIR, self._get_run_path(run, 'console.log'))
+        src = os.path.join(JOBS_DIR, self._get_run_path(run, "console.log"))
 
         if not os.path.exists(src):
-            log.warn('Run had no console output')
+            log.warn("Run had no console output")
             return
 
         self._create_from_file(
-            self._get_run_path(run, 'console.log'), src, 'text/plain')
+            self._get_run_path(run, "console.log"), src, "text/plain"
+        )
 
         # try and clean up our runs on disk
         os.unlink(src)
@@ -110,23 +110,22 @@ class BaseStorage(object):
         for p in paths:
             ct = mimetypes.guess_type(p)[0]
             if not ct:
-                ct = ''
-            url = self._generate_put_url(
-                run, p, expiration=expiration, content_type=ct)
+                ct = ""
+            url = self._generate_put_url(run, p, expiration=expiration, content_type=ct)
             urls[p] = {
-                'url': url,
-                'content-type': ct,
+                "url": url,
+                "content-type": ct,
             }
         return urls
 
     @contextlib.contextmanager
     def git_poller_cache(self):
-        path = 'git_poller_cache.json'
+        path = "git_poller_cache.json"
         data = {}
         try:
             data = json.loads(self._get_as_string(path))
         except FileNotFoundError:
-            log.warn('Cache not found, assuming initial run with no data')
+            log.warn("Cache not found, assuming initial run with no data")
 
         try:
             yield data

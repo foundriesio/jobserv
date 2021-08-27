@@ -73,8 +73,10 @@ scripts:
 
   flake8: |
     #!/bin/sh -ex
-    pip3 install flake8 flake8-junit-report==2.1.0
-    flake8 --ignore=E722,W605,E126 --exclude=migrations/ ./ | tee flake8.txt
+    apk add musl-dev gcc
+    pip3 install flake8 flake8-junit-report==2.1.0 black==21.7b0
+    black --check --diff ./jobserv ./runner ./tests
+    flake8 --exclude=migrations/ ./ | tee flake8.txt
     flake8_junit flake8.txt /archive/junit.xml
 
   unit-test: |
