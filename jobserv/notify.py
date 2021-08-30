@@ -174,7 +174,7 @@ def notify_build_complete_webhook(build, webhook_url, secret):
                     "Unable to deliver webhook to %s: HTTP_%d - %s",
                     webhook_url,
                     r.status_code,
-                    r.data,
+                    r.text,
                 )
             except Exception:
                 logging.exception("Unable to deliver webhook")
