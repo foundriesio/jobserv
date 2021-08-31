@@ -204,6 +204,54 @@ class WorkerAPITest(JobServTest):
         self.assertEqual(1, len(data["data"]["worker"]["run-defs"]))
 
     @patch("jobserv.api.worker.Storage")
+    def test_worker_sync_builds_uploading(self, storage):
+        """Make sure scheduler takes into account runs that are UPLOADING.
+
+        1. Create a "synchronous" Project
+        2. Add an UPLOADING build and and QUEUED build
+
+        Make sure the QUEUED build is not assigned
+        """
+        if db.engine.dialect.name == "sqlite":
+            self.skipTest("Test requires MySQL")
+        rundef = {"run_url": "foo", "runner_url": "foo", "env": {}}
+        storage().get_run_definition.return_value = json.dumps(rundef)
+        w = Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, ["aarch96"])
+        w.enlisted = True
+        w.online = True
+        db.session.add(w)
+
+        self.create_projects("job-1")
+        (p1,) = Project.query.all()
+        p1.synchronous_builds = True
+        db.session.commit()
+
+        # add active build
+        b = Build.create(p1)
+        r = Run(b, "p1b1r1")
+        r.status = BuildStatus.UPLOADING
+        r.host_tag = "aarch96"
+        db.session.add(r)
+
+        b = Build.create(p1)
+        r = Run(b, "p1b2r1")
+        r.host_tag = "aarch96"
+        db.session.add(r)
+        db.session.commit()
+
+        headers = [
+            ("Content-type", "application/json"),
+            ("Authorization", "Token key"),
+        ]
+        qs = "available_runners=1&foo=2"
+
+        # There should be no work available
+        resp = self.client.get("/workers/w1/", headers=headers, query_string=qs)
+        self.assertEqual(200, resp.status_code, resp.data)
+        data = json.loads(resp.data.decode())
+        self.assertNotIn("run-defs", data["data"]["worker"], data["data"]["worker"])
+
+    @patch("jobserv.api.worker.Storage")
     def test_worker_sync_builds(self, storage):
         """Ensure Projects with "synchronous_builds" are assigned properly.
 

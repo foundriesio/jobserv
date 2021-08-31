@@ -14,6 +14,7 @@ bcrypt==3.2.0
 cryptography==3.4.8
 dataclasses==0.6
 google-cloud-storage==1.42.0
+google-crc32c==1.1.2  # indirect, 1.1.3 won't build in alpine
 gunicorn==20.1.0
 pykwalify==1.8.0
 python-dateutil==2.8.2
