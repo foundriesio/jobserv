@@ -523,7 +523,7 @@ class Run(db.Model, StatusMixin):
         conn = db.session.connection().connection
         cursor = conn.cursor()
 
-        # Find queued(status=1) and running(status=2) runs
+        # Find queued(status=1), running(status=2), and uploading(status=6) runs
         cursor.execute(
             """
             SELECT
@@ -533,7 +533,7 @@ class Run(db.Model, StatusMixin):
             JOIN builds on builds.id = runs.build_id
             JOIN projects on projects.id = builds.proj_id
             WHERE
-                runs._status in (1, 2)
+                runs._status in (1, 2, 6)
               ORDER BY
                 runs._status DESC, runs.queue_priority DESC,
                 runs.build_id ASC, runs.id ASC
@@ -551,7 +551,7 @@ class Run(db.Model, StatusMixin):
         oldest_builds = {}
         for (run_id, build_id, status, proj_id, sync, tag) in rows:
             oldest_builds.setdefault(proj_id, build_id)
-            if status == 2 and sync:
+            if status in (2, 6) and sync:
                 sync_projects[proj_id] = True
                 okay_sync_builds[build_id] = True
             elif status == 1:
