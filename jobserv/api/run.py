@@ -383,11 +383,11 @@ def run_get_artifact(proj, build_id, run, path):
             offset = int(offset)
             end = fd.seek(0, 2)
             if offset >= end:
-                # TODO should be this:
-                # return b"", 200,
-                #  {"Content-Type": "text/html", "X-RUN-STATUS": r.status.name}
-                # but the original implementation was broke:
-                offset = 0
+                return (
+                    b"",
+                    200,
+                    {"Content-Type": "text/html", "X-RUN-STATUS": r.status.name},
+                )
             fd.seek(offset, 0)
         resp = make_response(send_file(fd, mimetype="text/plain"))
         resp.headers["X-RUN-STATUS"] = r.status.name
