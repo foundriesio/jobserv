@@ -20,6 +20,7 @@ import sqlalchemy.dialects.mysql.mysqldb as mysqldb
 from cryptography.fernet import Fernet
 from flask import url_for
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import Comparator, hybrid_property
 
@@ -28,11 +29,15 @@ from jobserv.settings import (
     JOBS_DIR,
     RUN_URL_FMT,
     SECRETS_FERNET_KEY,
+    SQLALCHEMY_DATABASE_URI,
     WORKER_DIR,
 )
 from jobserv.stats import StatsClient
 
 db = SQLAlchemy()
+ANNOTATION_COLUMN_TYPE = MEDIUMTEXT
+if "mysql" not in SQLALCHEMY_DATABASE_URI:
+    ANNOTATION_COLUMN_TYPE = db.Text
 
 
 def hack_create_connect_args(*args, **kwargs):
@@ -267,7 +272,7 @@ class Build(db.Model, StatusMixin):
     trigger_name = db.Column(db.String(80))
 
     name = db.Column(db.String(256))
-    annotation = db.Column(db.Text())
+    annotation = db.Column(ANNOTATION_COLUMN_TYPE())
 
     project = db.relationship(Project)
     runs = db.relationship(
