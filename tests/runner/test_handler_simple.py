@@ -9,6 +9,7 @@ import tempfile
 
 from unittest import TestCase, mock, skipIf
 
+from jobserv_runner import cmd
 from jobserv_runner.handlers.simple import HandlerError, SimpleHandler
 from jobserv_runner.jobserv import RunCancelledError
 
@@ -120,6 +121,30 @@ class SimpleHandlerTest(TestCase):
         self.assertIn("test-execzZZ", lines[0])
         self.assertEqual("abcdefg", lines[1])
 
+    def test_exec_hung(self):
+        self.hung = False
+        self.output = b""
+        cmd.HANG_DETECT_SECONDS = 1
+
+        def update_run(buf, retry=2):
+            self.output += buf
+            return True
+
+        def update_status(status, message):
+            self.output += ("%s: %s" % (status, message)).encode()
+
+        def hung_cb():
+            self.hung = True
+
+        self.handler.jobserv.SIMULATED = None
+        self.handler.jobserv.update_run = update_run
+        self.handler.jobserv.update_status = update_status
+
+        with self.handler.log_context("test-execzZZ") as log:
+            self.assertTrue(log.exec(["/bin/sleep", "1.1s"], hung_cb=hung_cb))
+
+        self.assertTrue(self.hung)
+
     @mock.patch("jobserv_runner.handlers.simple.stream_cmd")
     def test_docker_pull_fails(self, stream_cmd):
         """Ensure we handle a bad container pull properly."""
@@ -213,6 +238,7 @@ class SimpleHandlerTest(TestCase):
     @skipIf(not os.path.exists("/var/lib/docker"), "Docker not available")
     def test_docker_run(self):
         """Sort of a long test, but it really executes the whole thing."""
+        cmd.HANG_DETECT_SECONDS = 1
         self.handler.rundef = {
             "project": "p",
             "container": "busybox",
@@ -220,6 +246,7 @@ class SimpleHandlerTest(TestCase):
             "run_url": "http://for-simulator-instructions/run",
             "script": """#!/bin/sh -e\n
                       echo "running"
+                      sleep 3s
                       echo "persistent" > /foo/p.txt
                       echo "saved content" > /archive/f.txt
                        """,
@@ -232,6 +259,18 @@ class SimpleHandlerTest(TestCase):
 
         with open(os.path.join(self.rdir, "archive/f.txt")) as f:
             self.assertEqual("saved content\n", f.read())
+
+        found = False
+        for artifact in os.listdir(os.path.join(self.rdir, "archive")):
+            if artifact.startswith("hung-"):
+                found = True
+                with open(os.path.join(self.rdir, "archive", artifact)) as f:
+                    content = f.read()
+                    self.assertIn("PS OUTPUT", content)
+                    self.assertIn("TOP OUTPUT", content)
+                    self.assertIn("1 root      0:00 {do_run}", content)
+                break
+        self.assertTrue(found)
 
     def test_junit_tests(self):
         archive = os.path.join(self.rdir, "archive")

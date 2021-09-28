@@ -7,8 +7,10 @@ import select
 import subprocess
 import time
 
+HANG_DETECT_SECONDS = 300
 
-def _cmd_output(cmd, cwd=None, env=None):
+
+def _cmd_output(cmd, cwd=None, env=None, hung_cb=None):
     """Simple non-blocking way to stream the output of a command"""
     poller = select.poll()
     p = subprocess.Popen(
@@ -31,10 +33,12 @@ def _cmd_output(cmd, cwd=None, env=None):
             timeouts = 0
         else:
             timeouts += 1
-            if timeouts == 300:
-                # we've gone 5 minutes without output
-                msg = "== %s: cmd seems hung\n" % datetime.datetime.utcnow()
-                yield msg.encode()
+            if timeouts == HANG_DETECT_SECONDS:
+                if hung_cb:
+                    hung_cb()
+                else:
+                    msg = "== %s: cmd seems hung\n" % datetime.datetime.utcnow()
+                    yield msg.encode()
                 timeouts = 0  # give a chance to warn again in another 5
         for fd, event in ready:
             if event & select.POLLIN:
@@ -54,11 +58,11 @@ def _cmd_output(cmd, cwd=None, env=None):
         raise subprocess.CalledProcessError(p.returncode, cmd)
 
 
-def stream_cmd(stream_cb, cmd, cwd=None, env=None):
+def stream_cmd(stream_cb, cmd, cwd=None, env=None, hung_cb=None):
     last_update = 0
     last_buff = b""
     try:
-        for buff in _cmd_output(cmd, cwd, env):
+        for buff in _cmd_output(cmd, cwd, env, hung_cb):
             now = time.time()
             # stream data every 10s or if we have a 1k of data
             if now - last_update > 10 or len(buff) >= 1024:
