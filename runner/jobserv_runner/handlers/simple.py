@@ -81,7 +81,7 @@ class JobServLogger(ContextLogger):
             # flag this so we know the stack trace was printed
             value.handler_logged = True
 
-    def exec(self, cmd_args, cwd=None, env=None):
+    def exec(self, cmd_args, cwd=None, env=None, hung_cb=None):
         buf = self.io.getvalue()
         if buf:
             # send any buffer data to server
@@ -96,7 +96,7 @@ class JobServLogger(ContextLogger):
             return self.jobserv.update_run(buff)
 
         try:
-            stream_cmd(cb, cmd_args, cwd, env)
+            stream_cmd(cb, cmd_args, cwd, env, hung_cb)
             return True
         except subprocess.CalledProcessError as e:
             if e.output:
@@ -194,7 +194,21 @@ class SimpleHandler(object):
                 for val in env:
                     f.write(val.replace("\n", "\\n") + "\n")
         name = str(uuid.uuid4())
+
         with self.log_context("Running script inside container") as log:
+
+            def hung_cb():
+                outfile = "archive/hung-%s.txt" % time.time()
+                log.info("cmd seems hung, dumping diagnostic info to %s", outfile)
+                outfile = os.path.join(self.run_dir, outfile)
+                with open(outfile, "w") as f:
+                    diag_cmd = "echo '# PS OUTPUT'; /bin/ps -e; echo; echo '# TOP OUTPUT'; top -b -n1"  # NOQA
+                    subprocess.call(
+                        ["docker", "exec", name, "/bin/sh", "-c", diag_cmd],
+                        stdout=f,
+                        stderr=f,
+                    )
+
             cmd = ["docker", "run"]
             cmd.extend(["--name", name])
             cmd.extend(["-w", self.container_cwd])
@@ -213,7 +227,7 @@ class SimpleHandler(object):
             cmd.extend(["-v" + ":".join(x) for x in mounts])
             cmd.extend([self.rundef["container"], self._container_command])
             try:
-                return log.exec(cmd)
+                return log.exec(cmd, hung_cb=hung_cb)
             except RunTimeoutError:
                 log.error("Run has timed out, killing containter")
                 log.exec(["docker", "kill", name])
