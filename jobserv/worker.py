@@ -88,9 +88,9 @@ def _check_queue():
     # now get a list of available slots for runs
     workers = Worker.query.filter(
         Worker.enlisted == True,  # NOQA (flake8 doesn't like == True)
-        Worker.online == True,
-        Worker.surges_only == False,
-        Worker.deleted == False,
+        Worker.online == True,  # NOQA
+        Worker.surges_only == False,  # NOQA
+        Worker.deleted == False,  # NOQA
     )
     hosts = {}
     for w in workers:
