@@ -283,7 +283,7 @@ def run_update(proj, build_id, run):
 @blueprint.route("/<run>/rerun", methods=("POST",))
 def run_rerun(proj, build_id, run):
     r = _get_run(proj, build_id, run)
-    permissions.assert_internal_user()
+    permissions.assert_can_rerun(r)
     for t in r.tests:
         db.session.delete(t)
     r.set_status(BuildStatus.QUEUED)
