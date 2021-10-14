@@ -134,7 +134,7 @@ class ProjectTrigger(db.Model):
     secrets = db.Column(db.Text())
     queue_priority = db.Column(db.Integer)  # bigger is more important
 
-    project = db.relationship(Project)
+    project = db.relationship(Project, back_populates="triggers")
 
     fernet = None
 
@@ -274,7 +274,7 @@ class Build(db.Model, StatusMixin):
     name = db.Column(db.String(256))
     annotation = db.Column(ANNOTATION_COLUMN_TYPE())
 
-    project = db.relationship(Project)
+    project = db.relationship(Project, back_populates="builds")
     runs = db.relationship(
         "Run", order_by="Run.id", cascade="save-update, merge, delete"
     )
@@ -400,7 +400,7 @@ class Run(db.Model, StatusMixin):
 
     host_tag = db.Column(db.String(1024))
 
-    build = db.relationship(Build)
+    build = db.relationship(Build, back_populates="runs")
     status_events = db.relationship(
         "RunEvents", order_by="RunEvents.id", cascade="save-update, merge, delete"
     )
@@ -633,7 +633,7 @@ class Test(db.Model, StatusMixin):
     created = db.Column(db.DateTime, nullable=False)
     _status = db.Column(db.Integer)
 
-    run = db.relationship(Run)
+    run = db.relationship(Run, back_populates="tests")
     results = db.relationship(
         "TestResult", order_by="TestResult.id", cascade="save-update, merge, delete"
     )
