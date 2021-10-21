@@ -605,6 +605,7 @@ class RunAPITest(JobServTest):
         self.assertEqual("sha256:", sig[:7])
         computed = hmac.new(b"secret_value", data.encode(), "sha256").hexdigest()
         self.assertTrue(hmac.compare_digest(computed, sig[7:]))
+        self.assertIn("reason", data)
 
     @patch("jobserv.api.run.Storage")
     @patch("jobserv.api.run.notify_build_complete_email")

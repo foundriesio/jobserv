@@ -156,7 +156,7 @@ def notify_build_complete_email(build, to_list):
 
 
 def notify_build_complete_webhook(build, webhook_url, secret):
-    data = json.dumps(build.as_json(), cls=ISO8601_JSONEncoder)
+    data = json.dumps(build.as_json(detailed=True), cls=ISO8601_JSONEncoder)
     sig = hmac.new(secret.encode(), msg=data.encode(), digestmod="sha256")
     headers = {
         "Content-type": "application/json",
