@@ -9,7 +9,7 @@ import urllib.parse
 from flask import Blueprint, request, send_file
 
 from jobserv.jsend import ApiError, get_or_404, jsendify, paginate
-from jobserv.models import Run, Worker, db
+from jobserv.models import Project, Run, Worker, db
 from jobserv.project import ProjectDefinition
 from jobserv.settings import (
     RUNNER,
@@ -165,6 +165,39 @@ def worker_event(name):
     if payload:
         w.log_event(payload)
     return jsendify({}, 201)
+
+
+@blueprint.route("workers/<name>/volumes-deleted/", methods=["GET"])
+@worker_authenticated
+def worker_deleted_volumes(name):
+    """Inform the worker of volumes that should be deleted by taking in a list
+    of project prefixes the worker has. This may seem a little convoluted,
+    but it's slightly more secure than just giving a worker a list of
+    all projects on the server. This way multi-tenant workers can't ask
+    for a list of all the other tenants.
+
+    NOTE: We are really giving the client *prefixes* to delete. They'll send
+    us something like "customer-1" and we'll have "customer-1/lmp" as a
+    project. If "customer-1/lmp" gets removed, the response would be
+    "customer-1" so that *all* volumes are removed under that namespace
+    """
+    w = get_or_404(Worker.query.filter_by(name=name, deleted=False))
+    if not w.enlisted:
+        return jsendify({}, 403)
+    payload = request.get_json() or {}
+    directories = payload.get("directories")
+    if not directories:
+        return jsendify("Missing required argument 'directories'", 400)
+
+    deletes = []
+    projects = [x.name for x in Project.query.order_by(Project.name)]
+    for d in directories:
+        for p in projects:
+            if p.startswith(d):
+                break
+        else:
+            deletes.append(d)
+    return jsendify({"volumes": deletes}, 200)
 
 
 @blueprint.route("runner", methods=("GET",))

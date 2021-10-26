@@ -516,3 +516,28 @@ class WorkerAPITest(JobServTest):
         db.session.commit()
         r = self.client.patch("/workers/w1/", headers=headers, data=json.dumps(data))
         self.assertEqual(404, r.status_code)
+
+    def test_deleted_project(self):
+        headers = [
+            ("Content-type", "application/json"),
+            ("Authorization", "Token key"),
+        ]
+        w = Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, [])
+        w.enlisted = True
+        db.session.add(w)
+
+        self.create_projects("proj1")
+        self.create_projects("proj2/lmp")
+        self.create_projects("proj3/foo")
+        db.session.commit()
+
+        # we'll say the worker has found these directories under
+        # /srv/jobserv/volumes:
+        dirs_on_disk = {"directories": ["proj1", "proj2", "proj4"]}
+
+        resp = self.client.get(
+            "/workers/w1/volumes-deleted/", headers=headers, json=dirs_on_disk
+        )
+        self.assertEqual(200, resp.status_code, resp.data)
+        deletes = resp.json["data"]["volumes"]
+        self.assertEqual(["proj4"], deletes)
