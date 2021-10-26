@@ -75,7 +75,7 @@ scripts:
     #!/bin/sh -ex
     apk add musl-dev gcc
     pip3 install flake8 flake8-junit-report==2.1.0 black==21.7b0
-    black --check --diff ./jobserv ./runner ./tests
+    black --check --diff ./jobserv ./runner ./tests ./jobserv_worker.py
     flake8 --exclude=migrations/ ./ | tee flake8.txt
     flake8_junit flake8.txt /archive/junit.xml
 
