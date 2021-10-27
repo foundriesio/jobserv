@@ -175,11 +175,13 @@ class JobServ(object):
             "Authorization": "Token " + config["jobserv"]["host_api_key"],
         }
 
-    def _get(self, resource, params=None):
+    def _get(self, resource, params=None, json=None):
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.get(url, params=params, headers=self._auth_headers())
+        r = self.requests.get(
+            url, params=params, json=json, headers=self._auth_headers()
+        )
         if r.status_code != 200:
-            log.error("Failed to issue request: %s\n" % r.text)
+            log.error("Failed to issue request to %s: %s\n", r.url, r.text)
             sys.exit(1)
         return r
 
@@ -215,6 +217,13 @@ class JobServ(object):
 
     def delete_host(self):
         self._delete("/workers/%s/" % config["jobserv"]["hostname"])
+
+    def get_deleted_volumes(self, local_dirs):
+        r = self._get(
+            "/workers/%s/volumes-deleted/" % config["jobserv"]["hostname"],
+            json={"directories": local_dirs},
+        )
+        return r.json()["data"]["volumes"]
 
     @contextlib.contextmanager
     def check_in(self):
@@ -610,6 +619,44 @@ def cmd_cronwrap(args):
         JobServ()._post(resource, data, True)
 
 
+def cmd_gcvols(args):
+    vols_dir = os.path.join(os.path.dirname(script), "volumes")
+    try:
+        vols = [x.name for x in os.scandir(vols_dir) if x.is_dir()]
+    except FileNotFoundError:
+        log.info("No shared volumes found")
+        return
+
+    if not vols:
+        log.info("No shared volumes found")
+        return
+
+    events_url = "/workers/%s/events/" % config["jobserv"]["hostname"]
+    with open(os.path.join(vols_dir, ".gcvols"), "a") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            deletes = JobServ().get_deleted_volumes(vols)
+            if args.dryrun:
+                log.info("dryrun deletes:\n %s", "\n ".join(deletes))
+                return
+            for x in deletes:
+                log.warning("Deleting volume: %s", x)
+                event = {
+                    "title": "JobServ Delete Volume: " + x,
+                    "type": "info",
+                    "msg": "",
+                }
+                try:
+                    shutil.rmtree(os.path.join(vols_dir, x))
+                except Exception as e:
+                    event["type"] = "error"
+                    event["msg"] = str(e)
+                finally:
+                    JobServ()._post(events_url, event, True)
+        except BlockingIOError:
+            log.info("Another worker is doing GC")
+
+
 def main(args):
     if getattr(args, "func", None):
         log.debug("running: %s", args.func.__name__)
@@ -675,6 +722,14 @@ def get_args(args=None):
     )
     p.add_argument("script", help="Program to run")
     p.set_defaults(func=cmd_cronwrap)
+
+    p = sub.add_parser(
+        "gc-volumes",
+        help="""Check in with the server for active projects. Then free up
+                persistent volume data for deleted projects.""",
+    )
+    p.add_argument("--dryrun", action="store_true")
+    p.set_defaults(func=cmd_gcvols)
 
     args = parser.parse_args(args)
     args.server = JobServ()
