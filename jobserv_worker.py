@@ -622,7 +622,11 @@ def cmd_cronwrap(args):
 def cmd_gcvols(args):
     vols_dir = os.path.join(os.path.dirname(script), "volumes")
     try:
-        vols = [x.name for x in os.scandir(vols_dir) if x.is_dir()]
+        vols = [
+            x.name
+            for x in os.scandir(vols_dir)
+            if x.is_dir() and x.name != "lost+found"
+        ]
     except FileNotFoundError:
         log.info("No shared volumes found")
         return
