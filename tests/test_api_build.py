@@ -99,6 +99,41 @@ class BuildAPITest(JobServTest):
         data = json.loads(r.data.decode())
         self.assertEqual("error", data["status"])
 
+    @patch("jobserv.trigger.Storage")
+    def test_build_unexpected(self, storage):
+        """Ensure unexpected storage errors are handled gracefully."""
+        storage().set_run_definition.side_effect = RuntimeError("edge case!!!")
+        headers = {"Content-type": "application/json"}
+        data = {
+            "trigger-name": "git",
+            "project-definition": {
+                "timeout": 5,
+                "email": {
+                    "users": "f@f.com",
+                },
+                "triggers": [
+                    {
+                        "name": "git",
+                        "type": "git_poller",
+                        "runs": [
+                            {
+                                "name": "run0",
+                                "host-tag": "foo*",
+                                "container": "alpine",
+                                "script": "test",
+                            }
+                        ],
+                    },
+                ],
+                "scripts": {
+                    "test": "#test#",
+                },
+            },
+        }
+        _sign("http://localhost/projects/proj-1/builds/", headers, "POST")
+        self._post(self.urlbase, json.dumps(data), headers, 500)
+        self.assertEqual([BuildStatus.FAILED], [x.status for x in Run.query])
+
     @patch("jobserv.api.build.trigger_build")
     def test_build_trigger_simple(self, trigger_build):
         """Assert we can trigger a minimal build."""
