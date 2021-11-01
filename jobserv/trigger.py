@@ -43,6 +43,7 @@ def trigger_runs(
     storage, projdef, build, trigger, params, secrets, parent_type, queue_priority=0
 ):
     name_fmt = trigger.get("run-names")
+    added = []
     try:
         for run in trigger["runs"]:
             name = run["name"]
@@ -57,6 +58,7 @@ def trigger_runs(
             r = Run(build, name, trigger["name"], queue_priority)
             db.session.add(r)
             db.session.flush()
+            added.append(r)
             rundef = projdef.get_run_definition(r, run, trigger, params, secrets)
             rundef = _check_for_trigger_upgrade(rundef, trigger["type"], parent_type)
             storage.set_run_definition(r, rundef)
@@ -68,6 +70,8 @@ def trigger_runs(
     except Exception as e:
         logging.exception("Unexpected error creating runs for: %r", trigger)
         build.status = BuildStatus.FAILED
+        for r in added:
+            r.status = BuildStatus.FAILED
         db.session.commit()
         raise ApiError(500, str(e) + "\n" + traceback.format_exc())
 
