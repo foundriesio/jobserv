@@ -4,8 +4,10 @@
 import os
 import datetime
 import logging
+from time import sleep
 
 from flask import redirect
+from google.api_core.exceptions import ServiceUnavailable
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
@@ -13,6 +15,24 @@ from jobserv.settings import GCE_BUCKET
 from jobserv.storage.base import BaseStorage
 
 log = logging.getLogger("jobserv.flask")
+
+
+def retry():
+    def decorator(func):
+        def newfn(*args, **kwargs):
+            for i in (0.1, 0.5, 1, 0):
+                try:
+                    return func(*args, **kwargs)
+                except ServiceUnavailable:
+                    if i:
+                        log.info("GCS unavailable, trying again in %ds", i)
+                        sleep(i)
+                    else:
+                        raise
+
+        return newfn
+
+    return decorator
 
 
 class Storage(BaseStorage):
@@ -25,10 +45,12 @@ class Storage(BaseStorage):
             client = storage.Client()
         self.bucket = client.get_bucket(GCE_BUCKET)
 
+    @retry()
     def _create_from_string(self, storage_path, contents):
         b = self.bucket.blob(storage_path)
         b.upload_from_string(contents)
 
+    @retry()
     def _create_from_file(self, storage_path, filename, content_type):
         b = self.bucket.blob(storage_path)
         with open(filename, "rb") as f:
