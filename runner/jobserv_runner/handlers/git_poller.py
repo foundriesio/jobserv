@@ -140,7 +140,7 @@ class GitPoller(SimpleHandler):
             log.info("Git install supports LFS")
             self._lfs_initialize(env)
 
-        if not log.exec(["git", "clone", clone_url, dst], env=env):
+        if not log.exec_retriable(["git", "clone", clone_url, dst], env=env):
             raise HandlerError("Unable to clone: " + clone_url)
 
         sha = self.rundef["env"].get("GIT_SHA")
@@ -154,7 +154,7 @@ class GitPoller(SimpleHandler):
                 if not log.exec(["git", "submodule", "init"], cwd=dst, env=env):
                     raise HandlerError("Unable to init submodule(s)")
 
-                if not log.exec(
+                if not log.exec_retriable(
                     ["git", "submodule", "update", "--init", "--recursive"],
                     cwd=dst,
                     env=env,
