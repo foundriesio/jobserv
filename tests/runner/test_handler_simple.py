@@ -121,6 +121,31 @@ class SimpleHandlerTest(TestCase):
         self.assertIn("test-execzZZ", lines[0])
         self.assertEqual("abcdefg", lines[1])
 
+    @mock.patch("time.sleep")
+    def test_exec_retriable(self, sleep):
+        self.output = b""
+
+        def update_run(buf, retry=2):
+            self.output += buf
+            return True
+
+        def update_status(status, message):
+            self.output += ("%s: %s" % (status, message)).encode()
+
+        self.handler.jobserv.SIMULATED = None
+        self.handler.jobserv.update_run = update_run
+        self.handler.jobserv.update_status = update_status
+
+        with self.handler.log_context("test-execzZZ") as log:
+            self.assertTrue(log.exec_retriable(["/bin/echo", "abcdefg"]))
+            self.assertFalse(log.exec_retriable(["/bin/false"]))
+
+        lines = self.output.decode().splitlines()
+        self.assertIn("test-execzZZ", lines[0])
+        self.assertEqual("abcdefg", lines[1])
+        self.assertIn("retrying in 1 seconds", lines[2])
+        self.assertIn("retrying in 2 seconds", lines[3])
+
     def test_exec_hung(self):
         self.hung = False
         self.output = b""

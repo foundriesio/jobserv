@@ -104,6 +104,15 @@ class JobServLogger(ContextLogger):
                     self.error("unable to update run output: %s", e.output)
             return False
 
+    def exec_retriable(self, cmd_args, cwd=None, env=None, hung_cb=None):
+        for i in range(4):
+            if i:
+                self.error("command failed, retrying in %d seconds", i)
+                time.sleep(i)
+            if self.exec(cmd_args, cwd, env, hung_cb):
+                return True
+        return False
+
     def _write(self, msg):
         if not self.jobserv.SIMULATED:
             return super()._write(msg)
