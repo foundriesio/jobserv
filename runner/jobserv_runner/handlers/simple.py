@@ -115,8 +115,20 @@ class JobServLogger(ContextLogger):
 
     def _write(self, msg):
         if not self.jobserv.SIMULATED:
-            return super()._write(msg)
-        self.io.write(msg)
+            self.io.write(msg)
+            buf = self.io.getvalue()
+            try:
+                if buf and self.jobserv.update_run(buf.encode(), retry=1):
+                    self.io = io.StringIO()
+            except RunCancelledError as e:
+                # the call to self.jobserv.update_run, if successful, might
+                # get this exception. This means we've uploaded self.io to
+                # the server and should clear it here so that we don't send
+                # the buffer twice.
+                self.io = io.StringIO()
+                raise e
+        else:
+            self.io.write(msg)
 
 
 class SimpleHandler(object):
