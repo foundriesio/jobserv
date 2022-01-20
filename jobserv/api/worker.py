@@ -23,12 +23,12 @@ from jobserv.storage import Storage
 blueprint = Blueprint("api_worker", __name__, url_prefix="/")
 
 
-def _is_worker_authenticated(host):
+def _is_worker_authenticated(worker: Worker):
     key = request.headers.get("Authorization", None)
     if key:
         parts = key.split(" ")
         if len(parts) == 2 and parts[0] == "Token":
-            return host.validate_api_key(parts[1])
+            return worker.validate_api_key(parts[1])
     return False
 
 
