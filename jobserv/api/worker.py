@@ -41,9 +41,10 @@ def worker_authenticated(f):
         parts = key.split(" ")
         if len(parts) != 2 or parts[0] != "Token":
             return jsendify("Invalid Authorization header", 401)
-        worker = get_or_404(Worker.query.filter_by(name=kwargs["name"]))
+        worker = get_or_404(Worker.query.filter_by(name=kwargs["name"], deleted=False))
         if not worker.validate_api_key(parts[1]):
             return jsendify("Incorrect API key for host", 401)
+        request.worker = worker
         return f(*args, **kwargs)
 
     return wrapper
@@ -137,7 +138,6 @@ def worker_create(name):
 @blueprint.route("workers/<name>/", methods=["PATCH"])
 @worker_authenticated
 def worker_update(name):
-    w = get_or_404(Worker.query.filter_by(name=name, deleted=False))
     data = request.get_json() or {}
     attrs = (
         "distro",
@@ -150,7 +150,7 @@ def worker_update(name):
     for attr in attrs:
         val = data.get(attr)
         if val is not None:
-            setattr(w, attr, val)
+            setattr(request.worker, attr, val)
     db.session.commit()
     return jsendify({}, 200)
 
@@ -158,12 +158,11 @@ def worker_update(name):
 @blueprint.route("workers/<name>/events/", methods=["POST"])
 @worker_authenticated
 def worker_event(name):
-    w = get_or_404(Worker.query.filter_by(name=name, deleted=False))
-    if not w.enlisted:
+    if not request.worker.enlisted:
         return jsendify({}, 403)
     payload = request.get_json()
     if payload:
-        w.log_event(payload)
+        request.worker.log_event(payload)
     return jsendify({}, 201)
 
 
@@ -181,8 +180,7 @@ def worker_deleted_volumes(name):
     project. If "customer-1/lmp" gets removed, the response would be
     "customer-1" so that *all* volumes are removed under that namespace
     """
-    w = get_or_404(Worker.query.filter_by(name=name, deleted=False))
-    if not w.enlisted:
+    if not request.worker.enlisted:
         return jsendify({}, 403)
     payload = request.get_json() or {}
     directories = payload.get("directories")
