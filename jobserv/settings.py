@@ -29,6 +29,7 @@ WORKER_DIR = os.environ.get("WORKER_DIR", "/data/workers")
 LOCAL_ARTIFACTS_DIR = os.environ.get("LOCAL_ARTIFACTS_DIR", "/data/artifacts")
 GCE_BUCKET = os.environ.get("GCE_BUCKET")
 STORAGE_BACKEND = os.environ.get("STORAGE_BACKEND", "jobserv.storage.gce_storage")
+WORKER_JWTS_DIR = os.environ.get("WORKER_JWTS_DIR", "/data/worker-jwts")
 
 # The SURGE_SUPPORT_RATIO is defined as the number of Runs in QUEUED for a
 # given host_tag divided by the number of online and enlisted non-surge
