@@ -334,3 +334,28 @@ def run_status(project, build, run, status=None):
         run.set_status(status)
         db.session.commit()
         click.echo("Run is now: %r" % run)
+
+
+@app.cli.command("create-worker-jwt")
+@click.argument("ou", nargs=-1)
+def create_jwt(ou):
+    """Generate a worker JWT keypair"""
+    from cryptography.hazmat.primitives.serialization import (
+        Encoding,
+        NoEncryption,
+        PrivateFormat,
+    )
+    from jobserv.worker_jwt import create_keypair, _keyid
+
+    priv, cert = create_keypair(ou)
+
+    pkey = priv.private_bytes(
+        encoding=Encoding.PEM,
+        format=PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=NoEncryption(),
+    )
+
+    kid = _keyid(cert)
+    click.echo(f"# Key Id: {kid}")
+    click.echo(pkey)
+    click.echo(cert.public_bytes(Encoding.PEM))
