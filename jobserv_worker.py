@@ -4,6 +4,7 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import argparse
+from base64 import b64decode
 import contextlib
 import datetime
 import fcntl
@@ -46,7 +47,14 @@ if "linux" not in sys.platform:
 FEATURE_NEW_LOOPER = config.getboolean("jobserv", "feature_new_looper", fallback=False)
 
 
-def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges):
+def _host_from_jwt(jwt):
+    _, payload, _ = jwt.split(".")
+    content = b64decode(payload.encode() + b"==")
+    data = json.loads(content)
+    return data["name"]
+
+
+def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges, jwt):
     with open(script, "rb") as f:
         h = hashlib.md5()
         h.update(f.read())
@@ -59,8 +67,15 @@ def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges):
     config["jobserv"]["concurrent_runs"] = str(concurrent_runs)
     config["jobserv"]["host_tags"] = host_tags
     config["jobserv"]["surges_only"] = str(int(surges))
-    chars = string.ascii_letters + string.digits + "!@#$^&*~"
-    config["jobserv"]["host_api_key"] = "".join(random.choice(chars) for _ in range(32))
+    if jwt:
+        hostname = _host_from_jwt(jwt)
+        config["jobserv"]["jwt"] = jwt
+        config["jobserv"]["host_api_key"] = ""
+    else:
+        chars = string.ascii_letters + string.digits + "!@#$^&*~"
+        config["jobserv"]["host_api_key"] = "".join(
+            random.choice(chars) for _ in range(32)
+        )
     if not hostname:
         with open("/etc/hostname") as f:
             hostname = f.read().strip()
@@ -170,10 +185,13 @@ class JobServ(object):
         self.requests = requests
 
     def _auth_headers(self):
-        return {
-            "content-type": "application/json",
-            "Authorization": "Token " + config["jobserv"]["host_api_key"],
-        }
+        headers = {}
+        jwt = config["jobserv"].get("jwt")
+        if jwt:
+            headers["Authorization"] = "Bearer " + jwt
+        else:
+            headers["Authorization"] = "Token " + config["jobserv"]["host_api_key"]
+        return headers
 
     def _get(self, resource, params=None, json=None):
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
@@ -210,6 +228,8 @@ class JobServ(object):
             sys.exit(1)
 
     def create_host(self, hostprops):
+        if "jwt" in config["jobserv"]:
+            return self.update_host(hostprops)
         self._post("/workers/%s/" % config["jobserv"]["hostname"], hostprops)
 
     def update_host(self, hostprops):
@@ -300,6 +320,7 @@ def cmd_register(args):
         args.concurrent_runs,
         args.host_tags,
         args.surges_only,
+        args.jwt,
     )
     _create_systemd_service()
     p = HostProps()
@@ -678,6 +699,7 @@ def get_args(args=None):
         help="""Worker name to register. If none is provided, the value of
                 /etc/hostname will be used.""",
     )
+    p.add_argument("--jwt", help="A JWT to use for API authentication")
     p.add_argument(
         "--concurrent-runs",
         type=int,
