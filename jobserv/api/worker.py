@@ -109,7 +109,7 @@ def worker_get(name):
     w = get_or_404(Worker.query.filter_by(name=name))
 
     data = w.as_json(detailed=True)
-    if _is_worker_authenticated(w):
+    if not w.deleted and _is_worker_authenticated(w):
         data["version"] = WORKER_SCRIPT_VERSION
 
         if w.enlisted:
