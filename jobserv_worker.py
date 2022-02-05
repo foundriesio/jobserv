@@ -179,6 +179,12 @@ class HostProps(object):
             if locks:
                 locks.release()
 
+    @classmethod
+    def idle(cls):
+        avail = int(config["jobserv"]["concurrent_runs"])
+        with cls.available_runners() as locks:
+            return avail == len(locks)
+
 
 class JobServ(object):
     def __init__(self):
@@ -592,6 +598,8 @@ def cmd_loop(args):
             log.warning("Reboot lock from previous run detected, deleting")
             os.unlink("/tmp/jobserv_rebooting")
         try:
+            idle_threshold = args.idle_threshold * 60
+            last_busy = time.time()
             next_clean = time.time() + (args.docker_rm * 3600)
             while True:
                 log.debug("Calling check")
@@ -603,7 +611,17 @@ def cmd_loop(args):
                     rc = subprocess.call(cmd_args)
                     if rc:
                         log.error("Last call exited with rc: %d", rc)
-                if time.time() > next_clean:
+
+                now = time.time()
+                if HostProps.idle():
+                    log.debug("Worker is idle")
+                    if now - last_busy > idle_threshold:
+                        log.info("Worker is idle, calling %s", args.idle_command)
+                        subprocess.check_call([args.idle_command])
+                else:
+                    last_busy = now
+
+                if now > next_clean:
                     log.info("Running docker container cleanup")
                     _docker_clean()
                     next_clean = time.time() + (args.docker_rm * 3600)
@@ -740,6 +758,18 @@ def get_args(args=None):
         metavar="interval",
         help="""Interval in hours to run to run "dock rm" on containers that
                 have exited. default is every %(default)d hours""",
+    )
+    p.add_argument(
+        "--idle-threshold",
+        type=int,
+        default=15,
+        metavar="threshold",
+        help="""Threshold for how long worker should be idle before calling
+                the --idle-command. %(default)d minutes.""",
+    )
+    p.add_argument(
+        "--idle-command",
+        help="Command to call when worker has been idle --idle-threshold minutes",
     )
 
     p = sub.add_parser(
