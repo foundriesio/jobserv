@@ -482,6 +482,21 @@ class WorkerAPITest(JobServTest):
         self.assertEqual(4, data["cpu_total"])
         self.assertFalse(data["enlisted"])
 
+    def test_worker_delete(self):
+        w = Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, ["aarch96"])
+        db.session.add(w)
+        db.session.commit()
+        headers = [
+            ("Content-type", "application/json"),
+            ("Authorization", "Token key"),
+        ]
+        r = self.client.delete("/workers/w1/", headers=headers, data="")
+        self.assertEqual(200, r.status_code)
+
+        # make sure it doesn't get access to runs
+        r = self.client.get("/workers/w1/", headers=headers)
+        self.assertNotIn("version", r.json)
+
     def test_worker_needs_auth(self):
         headers = [("Content-type", "application/json")]
         db.session.add(Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, []))

@@ -196,6 +196,14 @@ def worker_update(name):
     return jsendify({}, 200)
 
 
+@blueprint.route("workers/<name>/", methods=["DELETE"])
+@worker_authenticated
+def worker_delete(name):
+    request.worker.deleted = True
+    db.session.commit()
+    return jsendify({}, 200)
+
+
 @blueprint.route("workers/<name>/events/", methods=["POST"])
 @worker_authenticated
 def worker_event(name):
