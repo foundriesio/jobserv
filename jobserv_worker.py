@@ -347,10 +347,9 @@ files from CI runs:
     )
 
 
-def cmd_uninstall(args):
-    """Remove worker installation"""
+def cmd_unregister(args):
+    """Remove worker from server"""
     args.server.delete_host()
-    shutil.rmtree(os.path.dirname(script))
 
 
 def _upgrade_worker(args, version):
@@ -733,8 +732,8 @@ def get_args(args=None):
     p.add_argument("server_url")
     p.add_argument("host_tags", help="Comma separated list")
 
-    p = sub.add_parser("uninstall", help="Uninstall the client")
-    p.set_defaults(func=cmd_uninstall)
+    p = sub.add_parser("unregister", help="Unregister worker with server")
+    p.set_defaults(func=cmd_unregister)
 
     p = sub.add_parser("check", help="Check in with server for updates")
     p.set_defaults(func=cmd_check)
