@@ -71,6 +71,9 @@ def worker_authenticated(f):
                 worker.enlisted = True
                 db.session.add(worker)
                 db.session.commit()
+            elif worker.deleted:
+                return jsendify("Not found", 404)
+
             worker.allowed_tags = w.allowed_tags
         else:
             worker = get_or_404(

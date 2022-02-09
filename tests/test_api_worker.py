@@ -573,6 +573,13 @@ class WorkerAPITest(JobServTest):
         r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
         self.assertEqual(403, r.status_code)
 
+        # delete it
+        w = Worker.query.filter(Worker.name == "MrJWT").one()
+        w.deleted = True
+        db.session.commit()
+        r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
+        self.assertEqual(404, r.status_code, r.data)
+
     def test_worker_update(self):
         headers = [
             ("Content-type", "application/json"),
