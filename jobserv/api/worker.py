@@ -9,6 +9,7 @@ import urllib.parse
 from flask import Blueprint, request, send_file
 from jwt.exceptions import PyJWTError
 
+from jobserv.flask import permissions
 from jobserv.jsend import ApiError, get_or_404, jsendify, paginate
 from jobserv.models import Project, Run, Worker, db
 from jobserv.project import ProjectDefinition
@@ -86,6 +87,7 @@ def worker_authenticated(f):
 
 @blueprint.route("workers/", methods=("GET",))
 def worker_list():
+    permissions.assert_worker_list()
     return paginate("workers", Worker.query.filter_by(deleted=False))
 
 

@@ -77,6 +77,10 @@ def assert_can_delete(project):
     assert_internal_user()
 
 
+def assert_worker_list():
+    """Can the requestor list workers."""
+
+
 def _sign(url, headers, method):
     headers["X-Time"] = str(round(time.time()))
     msg = "%s,%s,%s" % (method, headers["X-Time"], url)
