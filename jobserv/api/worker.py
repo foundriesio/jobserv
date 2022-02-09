@@ -26,21 +26,6 @@ from jobserv.worker_jwt import worker_from_jwt
 blueprint = Blueprint("api_worker", __name__, url_prefix="/")
 
 
-def _is_worker_authenticated(worker: Worker):
-    key = request.headers.get("Authorization", None)
-    if key:
-        parts = key.split(" ")
-        if len(parts) == 2 and parts[0] == "Token":
-            return worker.validate_api_key(parts[1])
-        if len(parts) == 2 and parts[0] == "Bearer":
-            try:
-                w = worker_from_jwt(parts[1])
-                return w.name == worker.name
-            except PyJWTError:
-                pass
-    return False
-
-
 def worker_authenticated(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -110,31 +95,30 @@ def _fix_run_urls(rundef):
 
 
 @blueprint.route("workers/<name>/", methods=("GET",))
+@worker_authenticated
 def worker_get(name):
-    w = get_or_404(Worker.query.filter_by(name=name))
-
+    w = request.worker
     data = w.as_json(detailed=True)
-    if not w.deleted and _is_worker_authenticated(w):
-        data["version"] = WORKER_SCRIPT_VERSION
+    data["version"] = WORKER_SCRIPT_VERSION
 
-        if w.enlisted:
-            w.ping(**request.args)
+    if w.enlisted:
+        w.ping(**request.args)
 
-        runners = int(request.args.get("available_runners", "0"))
-        if runners > 0 and w.available:
-            r = Run.pop_queued(w)
-            if r:
-                try:
-                    s = Storage()
-                    with s.console_logfd(r, "a") as f:
-                        f.write("# Run sent to worker: %s\n" % name)
-                    data["run-defs"] = [_fix_run_urls(s.get_run_definition(r))]
-                    r.build.refresh_status()
-                except Exception:
-                    r.worker = None
-                    r.status = "QUEUED"
-                    db.session.commit()
-                    raise
+    runners = int(request.args.get("available_runners", "0"))
+    if runners > 0 and w.available:
+        r = Run.pop_queued(w)
+        if r:
+            try:
+                s = Storage()
+                with s.console_logfd(r, "a") as f:
+                    f.write("# Run sent to worker: %s\n" % name)
+                data["run-defs"] = [_fix_run_urls(s.get_run_definition(r))]
+                r.build.refresh_status()
+            except Exception:
+                r.worker = None
+                r.status = "QUEUED"
+                db.session.commit()
+                raise
 
     return jsendify({"worker": data})
 
