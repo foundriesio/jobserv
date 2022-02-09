@@ -4,6 +4,7 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import argparse
+from base64 import b64decode
 import contextlib
 import datetime
 import fcntl
@@ -46,7 +47,14 @@ if "linux" not in sys.platform:
 FEATURE_NEW_LOOPER = config.getboolean("jobserv", "feature_new_looper", fallback=False)
 
 
-def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges):
+def _host_from_jwt(jwt):
+    _, payload, _ = jwt.split(".")
+    content = b64decode(payload.encode() + b"==")
+    data = json.loads(content)
+    return data["name"]
+
+
+def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges, jwt):
     with open(script, "rb") as f:
         h = hashlib.md5()
         h.update(f.read())
@@ -59,8 +67,15 @@ def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges):
     config["jobserv"]["concurrent_runs"] = str(concurrent_runs)
     config["jobserv"]["host_tags"] = host_tags
     config["jobserv"]["surges_only"] = str(int(surges))
-    chars = string.ascii_letters + string.digits + "!@#$^&*~"
-    config["jobserv"]["host_api_key"] = "".join(random.choice(chars) for _ in range(32))
+    if jwt:
+        hostname = _host_from_jwt(jwt)
+        config["jobserv"]["jwt"] = jwt
+        config["jobserv"]["host_api_key"] = ""
+    else:
+        chars = string.ascii_letters + string.digits + "!@#$^&*~"
+        config["jobserv"]["host_api_key"] = "".join(
+            random.choice(chars) for _ in range(32)
+        )
     if not hostname:
         with open("/etc/hostname") as f:
             hostname = f.read().strip()
@@ -164,16 +179,25 @@ class HostProps(object):
             if locks:
                 locks.release()
 
+    @classmethod
+    def idle(cls):
+        avail = int(config["jobserv"]["concurrent_runs"])
+        with cls.available_runners() as locks:
+            return avail == len(locks)
+
 
 class JobServ(object):
     def __init__(self):
         self.requests = requests
 
     def _auth_headers(self):
-        return {
-            "content-type": "application/json",
-            "Authorization": "Token " + config["jobserv"]["host_api_key"],
-        }
+        headers = {}
+        jwt = config["jobserv"].get("jwt")
+        if jwt:
+            headers["Authorization"] = "Bearer " + jwt
+        else:
+            headers["Authorization"] = "Token " + config["jobserv"]["host_api_key"]
+        return headers
 
     def _get(self, resource, params=None, json=None):
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
@@ -210,6 +234,8 @@ class JobServ(object):
             sys.exit(1)
 
     def create_host(self, hostprops):
+        if "jwt" in config["jobserv"]:
+            return self.update_host(hostprops)
         self._post("/workers/%s/" % config["jobserv"]["hostname"], hostprops)
 
     def update_host(self, hostprops):
@@ -300,6 +326,7 @@ def cmd_register(args):
         args.concurrent_runs,
         args.host_tags,
         args.surges_only,
+        args.jwt,
     )
     _create_systemd_service()
     p = HostProps()
@@ -320,10 +347,9 @@ files from CI runs:
     )
 
 
-def cmd_uninstall(args):
-    """Remove worker installation"""
+def cmd_unregister(args):
+    """Remove worker from server"""
     args.server.delete_host()
-    shutil.rmtree(os.path.dirname(script))
 
 
 def _upgrade_worker(args, version):
@@ -571,6 +597,8 @@ def cmd_loop(args):
             log.warning("Reboot lock from previous run detected, deleting")
             os.unlink("/tmp/jobserv_rebooting")
         try:
+            idle_threshold = args.idle_threshold * 60
+            last_busy = time.time()
             next_clean = time.time() + (args.docker_rm * 3600)
             while True:
                 log.debug("Calling check")
@@ -582,7 +610,17 @@ def cmd_loop(args):
                     rc = subprocess.call(cmd_args)
                     if rc:
                         log.error("Last call exited with rc: %d", rc)
-                if time.time() > next_clean:
+
+                now = time.time()
+                if HostProps.idle():
+                    log.debug("Worker is idle")
+                    if now - last_busy > idle_threshold:
+                        log.info("Worker is idle, calling %s", args.idle_command)
+                        subprocess.check_call([args.idle_command])
+                else:
+                    last_busy = now
+
+                if now > next_clean:
                     log.info("Running docker container cleanup")
                     _docker_clean()
                     next_clean = time.time() + (args.docker_rm * 3600)
@@ -678,6 +716,7 @@ def get_args(args=None):
         help="""Worker name to register. If none is provided, the value of
                 /etc/hostname will be used.""",
     )
+    p.add_argument("--jwt", help="A JWT to use for API authentication")
     p.add_argument(
         "--concurrent-runs",
         type=int,
@@ -693,8 +732,8 @@ def get_args(args=None):
     p.add_argument("server_url")
     p.add_argument("host_tags", help="Comma separated list")
 
-    p = sub.add_parser("uninstall", help="Uninstall the client")
-    p.set_defaults(func=cmd_uninstall)
+    p = sub.add_parser("unregister", help="Unregister worker with server")
+    p.set_defaults(func=cmd_unregister)
 
     p = sub.add_parser("check", help="Check in with server for updates")
     p.set_defaults(func=cmd_check)
@@ -718,6 +757,18 @@ def get_args(args=None):
         metavar="interval",
         help="""Interval in hours to run to run "dock rm" on containers that
                 have exited. default is every %(default)d hours""",
+    )
+    p.add_argument(
+        "--idle-threshold",
+        type=int,
+        default=15,
+        metavar="threshold",
+        help="""Threshold for how long worker should be idle before calling
+                the --idle-command. %(default)d minutes.""",
+    )
+    p.add_argument(
+        "--idle-command",
+        help="Command to call when worker has been idle --idle-threshold minutes",
     )
 
     p = sub.add_parser(

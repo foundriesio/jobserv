@@ -1,17 +1,21 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
-
+import datetime
 import json
 import os
 import shutil
 import tempfile
+from unittest.mock import patch
+
+import jwt
 
 import jobserv.models
 from jobserv.models import Build, BuildStatus, Project, Run, Worker, db
-
-from unittest.mock import patch
+import jobserv.worker
+from jobserv.worker_jwt import _keyid
 
 from tests import JobServTest
+from tests.test_worker_jwt import create_jwt
 
 
 class WorkerAPITest(JobServTest):
@@ -478,6 +482,21 @@ class WorkerAPITest(JobServTest):
         self.assertEqual(4, data["cpu_total"])
         self.assertFalse(data["enlisted"])
 
+    def test_worker_delete(self):
+        w = Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, ["aarch96"])
+        db.session.add(w)
+        db.session.commit()
+        headers = [
+            ("Content-type", "application/json"),
+            ("Authorization", "Token key"),
+        ]
+        r = self.client.delete("/workers/w1/", headers=headers, data="")
+        self.assertEqual(200, r.status_code)
+
+        # make sure it doesn't get access to runs
+        r = self.client.get("/workers/w1/", headers=headers)
+        self.assertNotIn("version", r.json)
+
     def test_worker_needs_auth(self):
         headers = [("Content-type", "application/json")]
         db.session.add(Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, []))
@@ -496,6 +515,63 @@ class WorkerAPITest(JobServTest):
         data = {"distro": "ArchLinux"}
         r = self.client.patch("/workers/w1/", headers=headers, data=json.dumps(data))
         self.assertEqual(401, r.status_code)
+
+    def test_worker_jwt_auth(self):
+        jobserv.worker_jwt.WORKER_JWTS_DIR = os.path.join(
+            jobserv.models.WORKER_DIR, "jwts"
+        )
+        os.mkdir(jobserv.worker_jwt.WORKER_JWTS_DIR)
+        key, cert = create_jwt([])
+        jobserv.worker_jwt._keys.clear()
+
+        headers = {"kid": _keyid(cert)}
+        worker = {"name": "MrJWT"}
+        worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
+        encoded = jwt.encode(worker, key, algorithm="ES256", headers=headers)
+
+        headers = [
+            ("Content-type", "application/json"),
+            ("Authorization", "Bearer " + encoded),
+        ]
+        data = {"distro": "alpine"}
+        r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
+        self.assertEqual(200, r.status_code)
+
+        data = self.get_json("/workers/MrJWT/")
+        self.assertEqual("alpine", data["worker"]["distro"])
+
+        # change the name and ensure it can't access another worker's data
+        worker = {"name": "NotMrJWT", "tags": ["1"]}
+        worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
+        encoded = jwt.encode(worker, key, algorithm="ES256", headers=headers)
+        headers[1] = ("Authorization", "Bearer " + encoded)
+        r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
+        self.assertEqual(401, r.status_code)
+
+    def test_worker_jwt_auth_restricted(self):
+        jobserv.worker_jwt.WORKER_JWTS_DIR = os.path.join(
+            jobserv.models.WORKER_DIR, "jwts"
+        )
+        os.mkdir(jobserv.worker_jwt.WORKER_JWTS_DIR)
+        key, cert = create_jwt(["org1"])
+        jobserv.worker_jwt._keys.clear()
+
+        headers = {"kid": _keyid(cert)}
+        worker = {"name": "MrJWT"}
+        worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
+        encoded = jwt.encode(worker, key, algorithm="ES256", headers=headers)
+
+        headers = [
+            ("Content-type", "application/json"),
+            ("Authorization", "Bearer " + encoded),
+        ]
+        data = {"distro": "alpine", "host_tags": "org1"}
+        r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
+        self.assertEqual(200, r.status_code)
+
+        data["host_tags"] = "org1,org2"
+        r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
+        self.assertEqual(403, r.status_code)
 
     def test_worker_update(self):
         headers = [

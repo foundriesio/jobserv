@@ -7,6 +7,7 @@ import os
 import urllib.parse
 
 from flask import Blueprint, request, send_file
+from jwt.exceptions import PyJWTError
 
 from jobserv.jsend import ApiError, get_or_404, jsendify, paginate
 from jobserv.models import Project, Run, Worker, db
@@ -19,6 +20,7 @@ from jobserv.settings import (
     WORKER_SCRIPT_VERSION,
 )
 from jobserv.storage import Storage
+from jobserv.worker_jwt import worker_from_jwt
 
 blueprint = Blueprint("api_worker", __name__, url_prefix="/")
 
@@ -29,6 +31,12 @@ def _is_worker_authenticated(worker: Worker):
         parts = key.split(" ")
         if len(parts) == 2 and parts[0] == "Token":
             return worker.validate_api_key(parts[1])
+        if len(parts) == 2 and parts[0] == "Bearer":
+            try:
+                w = worker_from_jwt(parts[1])
+                return w.name == worker.name
+            except PyJWTError:
+                pass
     return False
 
 
@@ -39,11 +47,37 @@ def worker_authenticated(f):
         if not key:
             return jsendify("No Authorization header provided", 401)
         parts = key.split(" ")
-        if len(parts) != 2 or parts[0] != "Token":
+        if len(parts) != 2 or parts[0] not in ("Token", "Bearer"):
             return jsendify("Invalid Authorization header", 401)
-        worker = get_or_404(Worker.query.filter_by(name=kwargs["name"], deleted=False))
-        if not worker.validate_api_key(parts[1]):
-            return jsendify("Incorrect API key for host", 401)
+
+        if parts[0] == "Bearer":
+            try:
+                w = worker_from_jwt(parts[1])
+            except PyJWTError as e:
+                return jsendify(str(e), 401)
+
+            if w.name != kwargs["name"]:
+                # worker can only access its self
+                return jsendify("Not found", 404)
+
+            worker = Worker.query.filter(Worker.name == w.name).first()
+            if worker is None:
+                # This looks a little nutty - constructing this object with
+                # basically "I have no idea" data. But the worker will call
+                # us with `worker_update` on its first connection which will
+                # fill these handy but not mission-cricital fields out.
+                worker = Worker(w.name, "?", 1, 1, "?", "", 1, w.allowed_tags)
+                worker.enlisted = True
+                db.session.add(worker)
+                db.session.commit()
+            worker.allowed_tags = w.allowed_tags
+        else:
+            worker = get_or_404(
+                Worker.query.filter_by(name=kwargs["name"], deleted=False)
+            )
+            if not worker.validate_api_key(parts[1]):
+                return jsendify("Incorrect API key for host", 401)
+            worker.allowed_tags = []
         request.worker = worker
         return f(*args, **kwargs)
 
@@ -75,7 +109,7 @@ def worker_get(name):
     w = get_or_404(Worker.query.filter_by(name=name))
 
     data = w.as_json(detailed=True)
-    if _is_worker_authenticated(w):
+    if not w.deleted and _is_worker_authenticated(w):
         data["version"] = WORKER_SCRIPT_VERSION
 
         if w.enlisted:
@@ -150,7 +184,22 @@ def worker_update(name):
     for attr in attrs:
         val = data.get(attr)
         if val is not None:
+            if attr == "host_tags" and request.worker.allowed_tags:
+                # make sure the worker isn't try to access things it shouldn't
+                rejects = set(val.split(",")) - set(request.worker.allowed_tags)
+                if rejects:
+                    raise ApiError(
+                        403, f"Worker not allowed access to host_tags: {rejects}"
+                    )
             setattr(request.worker, attr, val)
+    db.session.commit()
+    return jsendify({}, 200)
+
+
+@blueprint.route("workers/<name>/", methods=["DELETE"])
+@worker_authenticated
+def worker_delete(name):
+    request.worker.deleted = True
     db.session.commit()
     return jsendify({}, 200)
 
