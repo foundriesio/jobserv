@@ -96,9 +96,13 @@ def build_get_project_definition(proj, build_id):
 @blueprint.route("/builds/latest/", methods=("GET",))
 def build_get_latest(proj):
     """Return the most recent successful build"""
+    status = BuildStatus.PASSED
+    promoted = request.args.get("promoted")
+    if promoted:
+        status = BuildStatus.PROMOTED
     qs = Build.query.join(Build.project).filter(
         Project.name == proj,
-        Build.status == BuildStatus.PASSED,
+        Build.status == status,
     )
     trigger = request.args.get("trigger_name")
     if trigger:
