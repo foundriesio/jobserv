@@ -47,7 +47,8 @@ class WorkerAPITest(JobServTest):
         db.session.add(Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, []))
         db.session.add(Worker("w2", "fedora", 14, 4, "amd64", "key", 1, []))
         db.session.commit()
-        data = self.get_json("/workers/w2/")
+        headers = [("Authorization", "Token key")]
+        data = self.get_json("/workers/w2/", headers=headers)
         self.assertEqual("w2", data["worker"]["name"])
         self.assertEqual("fedora", data["worker"]["distro"])
         self.assertEqual(1, data["worker"]["concurrent_runs"])
@@ -476,7 +477,8 @@ class WorkerAPITest(JobServTest):
         }
         r = self.client.post("/workers/w1/", headers=headers, data=json.dumps(data))
         self.assertEqual(201, r.status_code)
-        data = self.get_json("/workers/w1/")["worker"]
+        headers.append(("Authorization", "Token 1234"))
+        data = self.get_json("/workers/w1/", headers=headers)["worker"]
         self.assertNotIn("api_key", data)
         self.assertEqual("ArchLinux", data["distro"])
         self.assertEqual(4, data["cpu_total"])
@@ -537,7 +539,7 @@ class WorkerAPITest(JobServTest):
         r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
         self.assertEqual(200, r.status_code)
 
-        data = self.get_json("/workers/MrJWT/")
+        data = self.get_json("/workers/MrJWT/", headers=headers)
         self.assertEqual("alpine", data["worker"]["distro"])
 
         # change the name and ensure it can't access another worker's data
@@ -573,6 +575,13 @@ class WorkerAPITest(JobServTest):
         r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
         self.assertEqual(403, r.status_code)
 
+        # delete it
+        w = Worker.query.filter(Worker.name == "MrJWT").one()
+        w.deleted = True
+        db.session.commit()
+        r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
+        self.assertEqual(404, r.status_code, r.data)
+
     def test_worker_update(self):
         headers = [
             ("Content-type", "application/json"),
@@ -585,7 +594,7 @@ class WorkerAPITest(JobServTest):
         r = self.client.patch("/workers/w1/", headers=headers, data=json.dumps(data))
         self.assertEqual(200, r.status_code)
 
-        data = self.get_json("/workers/w1/")
+        data = self.get_json("/workers/w1/", headers=headers)
         self.assertEqual("ArchLinux", data["worker"]["distro"])
 
         w.deleted = True
