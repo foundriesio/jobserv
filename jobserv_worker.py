@@ -202,7 +202,7 @@ class JobServ(object):
     def _get(self, resource, params=None, json=None):
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
         r = self.requests.get(
-            url, params=params, json=json, headers=self._auth_headers()
+            url, params=params, json=json, headers=self._auth_headers(), timeout=15
         )
         if r.status_code != 200:
             log.error("Failed to issue request to %s: %s\n", r.url, r.text)
@@ -214,21 +214,21 @@ class JobServ(object):
         if use_auth_headers:
             headers = self._auth_headers()
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.post(url, json=data, headers=headers)
+        r = self.requests.post(url, json=data, headers=headers, timeout=15)
         if r.status_code != 201:
             log.error("Failed to issue request: %s\n" % r.text)
             sys.exit(1)
 
     def _patch(self, resource, data):
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.patch(url, json=data, headers=self._auth_headers())
+        r = self.requests.patch(url, json=data, headers=self._auth_headers(), timeout=15)
         if r.status_code != 200:
             log.error("Failed to issue request: %s\n" % r.text)
             sys.exit(1)
 
     def _delete(self, resource):
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.delete(url, headers=self._auth_headers())
+        r = self.requests.delete(url, headers=self._auth_headers(), timeout=15)
         if r.status_code != 200:
             log.error("Failed to issue request: %s\n" % r.text)
             sys.exit(1)
