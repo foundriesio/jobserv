@@ -42,7 +42,7 @@ def _cmd_output(cmd, cwd=None, env=None, hung_cb=None):
                 timeouts = 0  # give a chance to warn again in another 5
         for fd, event in ready:
             if event & select.POLLIN:
-                yield os.read(fd, 1024)
+                yield os.read(fd, 4096)
             elif event & select.POLLHUP:
                 poller.unregister(fd)
                 fds.remove(fd)
