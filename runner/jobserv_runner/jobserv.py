@@ -12,6 +12,7 @@ import urllib.request
 import urllib.parse
 
 from http.client import HTTPException
+from socket import timeout
 
 from multiprocessing.pool import ThreadPool
 
@@ -54,7 +55,7 @@ def _post(url, data, headers, raise_error=False):
         logging.error("%s: %s", url, error)
         if raise_error:
             raise PostError(error)
-    except HTTPException as e:
+    except (timeout, HTTPException) as e:
         logging.exception("Unable to post to: " + url)
         if raise_error:
             raise PostError(str(e))
