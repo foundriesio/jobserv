@@ -45,7 +45,7 @@ def urllib_error_str(e):
 def _post(url, data, headers, raise_error=False):
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
-        resp = urllib.request.urlopen(req)
+        resp = urllib.request.urlopen(req, timeout=15)
         if resp.headers.get("X-JOBSERV-CANCEL"):
             raise RunCancelledError()
         return resp
