@@ -566,7 +566,8 @@ def _docker_clean():
                 deletes.append(containers[i])
         if deletes:
             log.info("Cleaning up old containers:\n  %s", "\n  ".join(deletes))
-            subprocess.check_output(["docker", "rm", "-v"] + deletes)
+            subprocess.check_call(["docker", "rm", "-v"] + deletes)
+        subprocess.check_call(["docker", "volume", "prune", "-f"])
     except subprocess.CalledProcessError as e:
         log.exception(e)
 
@@ -614,7 +615,7 @@ def cmd_loop(args):
                 now = time.time()
                 if HostProps.idle():
                     log.debug("Worker is idle")
-                    if now - last_busy > idle_threshold:
+                    if args.idle_command and now - last_busy > idle_threshold:
                         log.info("Worker is idle, calling %s", args.idle_command)
                         subprocess.check_call([args.idle_command])
                 else:
