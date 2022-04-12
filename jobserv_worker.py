@@ -614,7 +614,7 @@ def cmd_loop(args):
                 now = time.time()
                 if HostProps.idle():
                     log.debug("Worker is idle")
-                    if now - last_busy > idle_threshold:
+                    if args.idle_command and now - last_busy > idle_threshold:
                         log.info("Worker is idle, calling %s", args.idle_command)
                         subprocess.check_call([args.idle_command])
                 else:
