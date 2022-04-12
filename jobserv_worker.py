@@ -566,7 +566,7 @@ def _docker_clean():
                 deletes.append(containers[i])
         if deletes:
             log.info("Cleaning up old containers:\n  %s", "\n  ".join(deletes))
-            subprocess.check_output(["docker", "rm", "-v"] + deletes)
+            subprocess.check_call(["docker", "rm", "-v"] + deletes)
     except subprocess.CalledProcessError as e:
         log.exception(e)
 
