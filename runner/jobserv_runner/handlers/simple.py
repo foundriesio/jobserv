@@ -370,9 +370,17 @@ class SimpleHandler(object):
             log.info("Git reference is: %s", ref)
             if not log.exec(["git", "checkout", ref], cwd=dst):
                 raise HandlerError("Unable to checkout: " + ref)
-        else:
-            sha = subprocess.check_output(["git", "log", "--format=%H", "-1"], cwd=dst)
-            log.info("Git HEAD reference is: %s", sha.strip().decode())
+        sha = (
+            subprocess.check_output(["git", "log", "--format=%H", "-1"], cwd=dst)
+            .strip()
+            .decode()
+        )
+        log.info("Git HEAD reference is: %s", sha)
+        with open(os.path.join(self.run_dir, "archive/script_repo.log"), "w") as f:
+            f.write("REPO: %s\n" % repo["clone-url"])
+            if ref:
+                f.write("REF: %s\n" % ref)
+            f.write("SHA: %s\n" % sha)
 
         if not os.path.exists(os.path.join(dst, repo["path"])):
             raise HandlerError("Script not found in repo: " + repo["path"])
@@ -418,12 +426,12 @@ class SimpleHandler(object):
             mounts = self._prepare_secrets(log) + self._prepare_volumes(log)
         for mount in self._prepare_netrc():
             mounts.append(mount)
-        with self.log_context("Preparing script") as log:
-            mounts.append(self.create_script(log))
         archive = os.path.join(self.run_dir, "archive")
         if not os.path.exists(archive):
             os.mkdir(archive)  # probably a rebooted run
         mounts.append((archive, "/archive"))
+        with self.log_context("Preparing script") as log:
+            mounts.append(self.create_script(log))
 
         for pair in mounts:
             src = pair[0]
