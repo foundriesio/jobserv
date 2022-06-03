@@ -336,6 +336,10 @@ def run_get_simulate_sh(proj, build_id, run):
     runner = url_for("api_worker.runner_download", _external=True)
     rundef = _get_run_def(proj, build_id, run)
     rundef["runner_url"] = runner
+    # rundef must be shell escaped friendly so that it will work in the script:
+    rundef_str = json.dumps(rundef, indent=2)
+    rundef_str = rundef_str.replace("$", "\\$")
+    rundef_str = rundef_str.replace("\\", "\\\\")
     script = """#!/bin/sh -e
 
 SIMDIR="${{SIMDIR-/tmp/sim-run}}"
@@ -350,7 +354,7 @@ EIEIO
 wget -O runner {runner}
 PYTHONPATH=./runner python3 -m jobserv_runner.simulator -w `pwd` rundef.json
     """.format(
-        rundef=json.dumps(rundef, indent=2), runner=runner
+        rundef=rundef_str, runner=runner
     )
     return script, 200, {"Content-Type": "text/plain"}
 
