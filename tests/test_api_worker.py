@@ -526,10 +526,10 @@ class WorkerAPITest(JobServTest):
         key, cert = create_jwt([])
         jobserv.worker_jwt._keys.clear()
 
-        headers = {"kid": _keyid(cert)}
+        jwt_headers = {"kid": _keyid(cert)}
         worker = {"name": "MrJWT"}
         worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
-        encoded = jwt.encode(worker, key, algorithm="ES256", headers=headers)
+        encoded = jwt.encode(worker, key, algorithm="ES256", headers=jwt_headers)
 
         headers = [
             ("Content-type", "application/json"),
@@ -545,10 +545,10 @@ class WorkerAPITest(JobServTest):
         # change the name and ensure it can't access another worker's data
         worker = {"name": "NotMrJWT", "tags": ["1"]}
         worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
-        encoded = jwt.encode(worker, key, algorithm="ES256", headers=headers)
+        encoded = jwt.encode(worker, key, algorithm="ES256", headers=jwt_headers)
         headers[1] = ("Authorization", "Bearer " + encoded)
         r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
-        self.assertEqual(401, r.status_code)
+        self.assertEqual(404, r.status_code, r.data)
 
     def test_worker_jwt_auth_restricted(self):
         jobserv.worker_jwt.WORKER_JWTS_DIR = os.path.join(
