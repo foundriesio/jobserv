@@ -50,6 +50,7 @@ def run_health():
             "run": run.name,
             "url": url,
             "created": run.build.status_events[0].time,
+            "host_tag": run.host_tag,
         }
 
         if run.status == BuildStatus.QUEUED:
