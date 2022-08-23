@@ -47,6 +47,14 @@ class RunAPITest(JobServTest):
             self.assertEqual("run%d" % i, r["name"])
             self.assertEqual("QUEUED", r["status"])
 
+    def test_run_get_404(self):
+        resp = self.client.get(
+            self.urlbase + "run1/assemble-system-image/intel-corei7-64-lmp-1525-apps"
+        )
+        self.assertEqual(resp.status_code, 404)
+        data = json.loads(resp.data.decode())
+        self.assertEqual("Not Found", data["message"])
+
     @patch("jobserv.storage.gce_storage.storage")
     def test_run_get(self, storage):
         db.session.add(Run(self.build, "run0"))

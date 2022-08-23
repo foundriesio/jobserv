@@ -50,6 +50,10 @@ def _user_has_permission():
             return jsendify("Object does not exist: " + request.path, 404)
 
 
+def _handle_404(e):
+    return jsendify("Not Found", 404)
+
+
 def create_app(settings_object="jobserv.settings"):
     app = Flask(__name__)
     app.wsgi_app = ProxyFix(app.wsgi_app)
@@ -74,4 +78,5 @@ def create_app(settings_object="jobserv.settings"):
 
     app.json_encoder = ISO8601_JSONEncoder
     app.before_request(_user_has_permission)
+    app.register_error_handler(404, _handle_404)
     return app
