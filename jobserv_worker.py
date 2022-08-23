@@ -221,7 +221,9 @@ class JobServ(object):
 
     def _patch(self, resource, data):
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.patch(url, json=data, headers=self._auth_headers(), timeout=15)
+        r = self.requests.patch(
+            url, json=data, headers=self._auth_headers(), timeout=15
+        )
         if r.status_code != 200:
             log.error("Failed to issue request: %s\n" % r.text)
             sys.exit(1)
