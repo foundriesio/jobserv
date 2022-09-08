@@ -297,6 +297,40 @@ class SimpleHandlerTest(TestCase):
                 break
         self.assertTrue(found)
 
+    @skipIf(not os.path.exists("/var/lib/docker"), "Docker not available")
+    def test_docker_max_memory(self):
+        """See if we enforce the --memory flag"""
+        self.output = b""
+
+        def update_run(buf, retry=2):
+            self.output += buf
+            return True
+
+        def update_status(status, message):
+            self.output += ("%s: %s" % (status, message)).encode()
+
+        def hung_cb():
+            self.hung = True
+
+        self.handler.jobserv.SIMULATED = None
+        self.handler.jobserv.update_run = update_run
+        self.handler.jobserv.update_status = update_status
+
+        self.handler.rundef = {
+            "project": "p",
+            "max-mem-bytes": 7 * 1024 * 1024,  # 6MB is docker minimum
+            "container": "alpine",
+            "run_url": "http://for-simulator-instructions/run",
+            "script": """#!/bin/sh -e\n
+                      # so little ram is left that apk will fail
+                      apk add foo || echo FAILED $?
+                       """,
+        }
+        self.handler.docker_pull()
+        mounts = self.handler.prepare_mounts()
+        self.assertTrue(self.handler.docker_run(mounts))
+        self.assertIn(b"FAILED 137", self.output)
+
     def test_junit_tests(self):
         archive = os.path.join(self.rdir, "archive")
         os.mkdir(archive)

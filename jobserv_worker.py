@@ -117,14 +117,14 @@ class RunLocks(object):
 
 class HostProps(object):
     CACHE = os.path.join(os.path.dirname(script), "hostprops.cache")
+    MEM_TOTAL = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
 
     def __init__(self):
-        mem = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
         surges = int(config.get("jobserv", "surges_only", fallback="0"))
         self.data = {
             "cpu_total": cpu_count(),
             "cpu_type": platform.processor() or platform.machine(),
-            "mem_total": mem,
+            "mem_total": self.MEM_TOTAL,
             "distro": self._get_distro(),
             "api_key": config["jobserv"]["host_api_key"],
             "name": config["jobserv"]["hostname"],
@@ -463,10 +463,19 @@ def _update_shared_volumes_mapping(rundef):
         rundef["shared-volumes"] = mapping
 
 
+def _update_max_memory(rundef):
+    mm = config["jobserv"].get("container-max-memory-percent")
+    if mm:
+        mmpct = int(mm) / 100
+        total = round(mmpct * HostProps.MEM_TOTAL)
+        rundef["max-mem-bytes"] = total
+
+
 def _handle_run(jobserv, rundef, rundir=None):
     runsdir = os.path.join(os.path.dirname(script), "runs")
     try:
         _update_shared_volumes_mapping(rundef)
+        _update_max_memory(rundef)
         jobserv.update_run(rundef, "RUNNING", "Setting up runner on worker")
         if not os.path.exists(runsdir):
             os.mkdir(runsdir)

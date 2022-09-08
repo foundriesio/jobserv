@@ -237,6 +237,10 @@ class SimpleHandler(object):
             if self.rundef.get("privileged"):
                 log.info('Running with "--privileged"')
                 cmd.append("--privileged")
+            if self.rundef.get("max-mem-bytes"):
+                maxbytes = self.rundef.get("max-mem-bytes")
+                log.info("Running with --memory=%d", maxbytes)
+                cmd.extend(["--memory", str(maxbytes)])
             if self.rundef.get("container-user"):
                 user = self.rundef.get("container-user")
                 log.info("Overriding container user to be: %s", user)
