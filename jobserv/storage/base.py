@@ -71,10 +71,11 @@ class BaseStorage(object):
 
     def set_run_definition(self, run, definition):
         path = self._get_run_path(run, ".rundef.json")
-        self._create_from_string(path, definition)
+        self._create_from_string(path, json.dumps(definition))
 
     def get_run_definition(self, run):
-        return self._get_as_string(self._get_run_path(run, ".rundef.json"))
+        def_str = self._get_as_string(self._get_run_path(run, ".rundef.json"))
+        return json.loads(def_str)
 
     def console_logfd(self, run, mode="r"):
         path = os.path.join(JOBS_DIR, self._get_run_path(run, "console.log"))

@@ -138,7 +138,7 @@ def _handle_triggers(storage, run):
     projdef = ProjectDefinition(
         yaml.safe_load(storage.get_project_definition(run.build))
     )
-    rundef = json.loads(storage.get_run_definition(run))
+    rundef = storage.get_run_definition(run)
     secrets = rundef.get("secrets")
     params = rundef.get("env", {})
     params["H_TRIGGER_URL"] = request.url
@@ -178,7 +178,7 @@ def _handle_triggers(storage, run):
 
 def _failed_tests(storage, run):
     failures = False
-    rundef = json.loads(storage.get_run_definition(run))
+    rundef = storage.get_run_definition(run)
     grepping = rundef.get("test-grepping")
     if grepping:
         test_pat = grepping.get("test-pattern")
@@ -305,7 +305,6 @@ def _get_run_def(proj, build_id, run):
     try:
         _authenticate_runner(r)
     except ApiError:
-        rundef = json.loads(rundef)
         if not permissions.run_can_access_secrets(r):
             # The requestor is not authorized to view secrets
             secrets = rundef.get("secrets")
@@ -324,7 +323,7 @@ def run_get_definition(proj, build_id, run):
 @blueprint.route("/<run>/progress-regex", methods=("GET",))
 def run_get_progress_regex(proj, build_id, run):
     r = _get_run(proj, build_id, run)
-    rundef = json.loads(Storage().get_run_definition(r))
+    rundef = Storage().get_run_definition(r)
     progress = rundef.get("console-progress")
     if progress:
         return jsendify(progress)

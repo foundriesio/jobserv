@@ -4,7 +4,6 @@
 import copy
 import os
 import itertools
-import json
 
 from flask import url_for
 
@@ -171,7 +170,7 @@ class ProjectDefinition(object):
         rundef["env"]["H_BUILD"] = str(dbrun.build.build_id)
         rundef["env"]["H_RUN"] = dbrun.name
         dbrun.host_tag = rundef["host-tag"]
-        return json.dumps(rundef, indent=2)
+        return rundef
 
     @classmethod
     def _check_trigger_depth(clazz, proj_data, parent, trigger, depth):

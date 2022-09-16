@@ -1,7 +1,6 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
 
-import json
 import os
 
 import yaml
@@ -182,7 +181,7 @@ class ProjectSchemaTest(JobServTest):
             trigger = proj._data["triggers"][0]
             run = trigger["runs"][0]
             rundef = proj.get_run_definition(dbrun, run, trigger, {}, {})
-            repo = json.loads(rundef).get("script-repo")
+            repo = rundef.get("script-repo")
             self.assertEqual({"clone-url": "url", "path": "path/foo.sh"}, repo)
 
     @patch("jobserv.project.url_for")
@@ -239,8 +238,7 @@ class ProjectSchemaTest(JobServTest):
             trigger = proj._data["triggers"][0]
             run = trigger["runs"][0]
             rundef = proj.get_run_definition(dbrun, run, trigger, {}, {})
-            data = json.loads(rundef)
-            self.assertEqual("aarch6*", data["host-tag"])
+            self.assertEqual("aarch6*", rundef["host-tag"])
             self.assertEqual("aarch6*", dbrun.host_tag)
 
     def test_host_tag_rundef_loopon(self):
@@ -256,15 +254,13 @@ class ProjectSchemaTest(JobServTest):
             trigger = proj._data["triggers"][0]
             run = trigger["runs"][1]
             rundef = proj.get_run_definition(dbrun, run, trigger, {}, {})
-            data = json.loads(rundef)
-            self.assertEqual("aarch64", data["host-tag"])
+            self.assertEqual("aarch64", rundef["host-tag"])
             self.assertEqual("aarch64", dbrun.host_tag)
 
             trigger = proj._data["triggers"][0]
             run = trigger["runs"][2]
             rundef = proj.get_run_definition(dbrun, run, trigger, {}, {})
-            data = json.loads(rundef)
-            self.assertEqual("armhf", data["host-tag"])
+            self.assertEqual("armhf", rundef["host-tag"])
             self.assertEqual("armhf", dbrun.host_tag)
 
     def test_host_tag_rundef_loopon_bad(self):
@@ -289,7 +285,6 @@ class ProjectSchemaTest(JobServTest):
             trigger = proj._data["triggers"][0]
             run = trigger["runs"][0]
             rundef = proj.get_run_definition(dbrun, run, trigger, {}, {})
-            data = json.loads(rundef)
-            self.assertEqual("GLOBAL", data["env"]["GLOBAL_PARAM"])
-            self.assertEqual("RUN", data["env"]["RUN_PARAM"])
-            self.assertEqual("TRIGGER", data["env"]["TRIGGER_PARAM"])
+            self.assertEqual("GLOBAL", rundef["env"]["GLOBAL_PARAM"])
+            self.assertEqual("RUN", rundef["env"]["RUN_PARAM"])
+            self.assertEqual("TRIGGER", rundef["env"]["TRIGGER_PARAM"])

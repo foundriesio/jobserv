@@ -104,7 +104,7 @@ class TestAPITest(JobServTest):
 
         self.test.run.tests[0].status = BuildStatus.PASSED
         db.session.commit()
-        storage().get_run_definition.return_value = "{}"
+        storage().get_run_definition.return_value = {}
         headers.append(("X-RUN-STATUS", "FAILED"))
         self._post("/projects/proj-1/builds/1/runs/run0/", None, headers=headers)
         db.session.refresh(self.test.run)

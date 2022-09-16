@@ -80,7 +80,6 @@ def worker_list():
 
 
 def _fix_run_urls(rundef):
-    rundef = json.loads(rundef)
     parts = urllib.parse.urlparse(request.url)
     public = "%s://%s" % (parts.scheme, parts.hostname)
     if parts.port:
@@ -91,7 +90,6 @@ def _fix_run_urls(rundef):
     url = rundef["env"].get("H_TRIGGER_URL")
     if url:
         rundef["env"]["H_TRIGGER_URL"] = public + urllib.parse.urlparse(url).path
-    return json.dumps(rundef)
 
 
 @blueprint.route("workers/<name>/", methods=("GET",))
@@ -112,7 +110,9 @@ def worker_get(name):
                 s = Storage()
                 with s.console_logfd(r, "a") as f:
                     f.write("# Run sent to worker: %s\n" % name)
-                data["run-defs"] = [_fix_run_urls(s.get_run_definition(r))]
+                rundef = s.get_run_definition(r)
+                _fix_run_urls(rundef)
+                data["run-defs"] = [json.dumps(rundef)]
                 r.build.refresh_status()
             except Exception:
                 r.worker = None

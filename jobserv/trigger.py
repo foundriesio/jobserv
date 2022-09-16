@@ -1,7 +1,6 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
 
-import json
 import logging
 import traceback
 
@@ -26,17 +25,12 @@ def _check_for_trigger_upgrade(rundef, trigger_type, parent_trigger_type):
     """
     if parent_trigger_type == "github_pr":
         if trigger_type == "simple":
-            rundef = json.loads(rundef)
             rundef["trigger_type"] = "github_pr"
             logging.info("Updating the rundef from simple->github_pr")
-            rundef = json.dumps(rundef, indent=2)
     elif parent_trigger_type == "git_poller":
         if trigger_type == "simple":
-            rundef = json.loads(rundef)
             rundef["trigger_type"] = "git_poller"
             logging.info("Updating the rundef from simple->gith_poller")
-            rundef = json.dumps(rundef, indent=2)
-    return rundef
 
 
 def trigger_runs(
@@ -60,7 +54,7 @@ def trigger_runs(
             db.session.flush()
             added.append(r)
             rundef = projdef.get_run_definition(r, run, trigger, params, secrets)
-            rundef = _check_for_trigger_upgrade(rundef, trigger["type"], parent_type)
+            _check_for_trigger_upgrade(rundef, trigger["type"], parent_type)
             storage.set_run_definition(r, rundef)
     except ApiError:
         logging.exception("ApiError while triggering runs for: %r", trigger)

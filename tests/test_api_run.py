@@ -90,7 +90,7 @@ class RunAPITest(JobServTest):
             "script-repo": {"token": "secret"},
             "runner_url": "foo",
         }
-        storage().get_run_definition.return_value = json.dumps(rundef)
+        storage().get_run_definition.return_value = rundef.copy()
         db.session.add(Run(self.build, "run0"))
         db.session.commit()
         r = self.client.get(self.urlbase + "run0/.rundef.json")
@@ -100,6 +100,7 @@ class RunAPITest(JobServTest):
         self.assertEqual("secret", data["script-repo"]["token"])
         self.assertIsNone(data.get("api_key"))
 
+        storage().get_run_definition.return_value = rundef.copy()
         r = self.client.get(self.urlbase + "run0/.simulate.sh")
         self.assertEqual(200, r.status_code, r.data)
 
@@ -250,7 +251,7 @@ class RunAPITest(JobServTest):
             }
         )
         m.console_logfd.return_value = open("/dev/null", "w")
-        m.get_run_definition.return_value = json.dumps({})
+        m.get_run_definition.return_value = {}
         storage.return_value = m
         r = Run(self.build, "run0")
         r.trigger = "git"
@@ -267,7 +268,7 @@ class RunAPITest(JobServTest):
         self.assertEqual("test-run0", run.name)
         self.assertEqual("QUEUED", run.status.name)
 
-        rundef = json.loads(m.set_run_definition.call_args_list[0][0][1])
+        rundef = m.set_run_definition.call_args_list[0][0][1]
         self.assertEqual("git_poller", rundef["trigger_type"])
 
         # Make sure we didn't send the email since the build isn't complete yet
@@ -320,7 +321,7 @@ class RunAPITest(JobServTest):
             }
         )
         m.console_logfd.return_value = open("/dev/null", "w")
-        m.get_run_definition.return_value = json.dumps({})
+        m.get_run_definition.return_value = {}
         storage.return_value = m
         r = Run(self.build, "run0")
         r.trigger = "github"
@@ -335,7 +336,7 @@ class RunAPITest(JobServTest):
         self._post(self.urlbase + "run0/", None, headers, 200)
         run = Run.query.all()[1]
         self.assertEqual("test-run0", run.name)
-        rundef = json.loads(m.set_run_definition.call_args_list[0][0][1])
+        rundef = m.set_run_definition.call_args_list[0][0][1]
         self.assertEqual("github_pr", rundef["trigger_type"])
 
     @patch("jobserv.api.run.Storage")
@@ -375,7 +376,7 @@ class RunAPITest(JobServTest):
             }
         )
         m.console_logfd.return_value = open("/dev/null", "w")
-        m.get_run_definition.return_value = json.dumps({})
+        m.get_run_definition.return_value = {}
         m.get_artifact_content.return_value = "#mocked line 1\n"
         storage.return_value = m
         r = Run(self.build, "run0")
@@ -432,7 +433,7 @@ class RunAPITest(JobServTest):
                 "fixupdict": {"foo": "PASSED"},
             }
         }
-        m.get_run_definition.return_value = json.dumps(rundef)
+        m.get_run_definition.return_value = rundef
         storage.return_value = m
         r = Run(self.build, "run0")
         r.trigger = "github"
@@ -493,7 +494,7 @@ class RunAPITest(JobServTest):
                 "fixupdict": {"foo": "PASSED"},
             }
         }
-        m.get_run_definition.return_value = json.dumps(rundef)
+        m.get_run_definition.return_value = rundef
         storage.return_value = m
         r = Run(self.build, "run0")
         r.trigger = "github"
@@ -511,46 +512,6 @@ class RunAPITest(JobServTest):
         results = [(x.name, x.status.name) for x in Test.query.all()[0].results]
         expected = [("t1", "PASSED"), ("t2", "FAILED")]
         self.assertEqual(expected, results)
-
-    @patch("jobserv.api.run.Storage")
-    def test_build_complete_lava_tests(self, storage):
-        m = Mock()
-        m.get_project_definition.return_value = json.dumps(
-            {
-                "timeout": 5,
-                "triggers": [
-                    {
-                        "name": "github",
-                        "type": "github_pr",
-                        "runs": [
-                            {
-                                "name": "run0",
-                            }
-                        ],
-                    },
-                ],
-            }
-        )
-        m.console_logfd.return_value = open("/dev/null", "w")
-        m.get_run_definition.return_value = json.dumps({})
-        storage.return_value = m
-        r = Run(self.build, "run0")
-        r.trigger = "github"
-        r.status = BuildStatus.RUNNING
-        db.session.add(r)
-        db.session.commit()
-
-        db.session.add(Test(r, "test-1", "ctx", BuildStatus.QUEUED))
-        db.session.commit()
-
-        headers = [
-            ("Authorization", "Token %s" % r.api_key),
-            ("X-RUN-STATUS", "PASSED"),
-        ]
-        self._post(self.urlbase + "run0/", None, headers, 200)
-
-        db.session.refresh(r)
-        self.assertEqual(BuildStatus.RUNNING, r.status)
 
     @patch("jobserv.api.run.Storage")
     @patch("jobserv.api.run.notify_build_complete_email")
@@ -583,9 +544,9 @@ class RunAPITest(JobServTest):
             }
         )
         m.console_logfd.return_value = open("/dev/null", "w")
-        m.get_run_definition.return_value = json.dumps(
-            {"secrets": {"example_secret": "secret_value"}}
-        )
+        m.get_run_definition.return_value = {
+            "secrets": {"example_secret": "secret_value"}
+        }
         storage.return_value = m
         r = Run(self.build, "run0")
         r.trigger = "github"
@@ -640,7 +601,7 @@ class RunAPITest(JobServTest):
             }
         )
         m.console_logfd.return_value = open("/dev/null", "w")
-        m.get_run_definition.return_value = json.dumps({})
+        m.get_run_definition.return_value = {}
         storage.return_value = m
         r = Run(self.build, "run0")
         r.trigger = "github"
@@ -723,7 +684,7 @@ class RunAPITest(JobServTest):
         m.create_project_definition = MockStorage.create_projdef
 
         m.console_logfd.return_value = open("/dev/null", "w")
-        m.get_run_definition.return_value = json.dumps({})
+        m.get_run_definition.return_value = {}
         m.get_build_params.return_value = {"buildparam": "42"}
         storage.return_value = m
         r = Run(self.build, "run0")
@@ -743,7 +704,7 @@ class RunAPITest(JobServTest):
         run = Run.query.all()[1]
         self.assertEqual("test", run.name)
         self.assertEqual("QUEUED", run.status.name)
-        rundef = json.loads(m.set_run_definition.call_args[0][1])
+        rundef = m.set_run_definition.call_args[0][1]
         self.assertEqual("42", rundef["env"]["buildparam"])
         self.assertEqual(8675309, run.queue_priority)
 
