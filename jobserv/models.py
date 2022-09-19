@@ -1,6 +1,7 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
 
+from base64 import urlsafe_b64decode, urlsafe_b64encode
 import contextlib
 import datetime
 import enum
@@ -476,6 +477,15 @@ class Run(db.Model, StatusMixin):
                 {"time": x.time, "status": x.status.name} for x in self.status_events
             ]
         return data
+
+    def derive_fernet_token(self):
+        # Rather than using the same key for everything, we'll take our
+        # fernet key and replace a few bytes with the run-id
+        key = urlsafe_b64decode(SECRETS_FERNET_KEY)
+        keyarray = bytearray(key)
+        pos = self.id % 16
+        keyarray[pos : pos + 4] = self.id.to_bytes(4, "little")
+        return urlsafe_b64encode(bytes(keyarray))
 
     def cancel(self):
         # This is tricky. If we are RUNNING, then we need to go to CANCELLING

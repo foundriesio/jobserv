@@ -8,6 +8,8 @@ import os
 import logging
 import mimetypes
 
+from cryptography.fernet import Fernet
+
 from jobserv.settings import JOBS_DIR
 
 log = logging.getLogger("jobserv.flask")
@@ -71,11 +73,25 @@ class BaseStorage(object):
 
     def set_run_definition(self, run, definition):
         path = self._get_run_path(run, ".rundef.json")
+        secrets = definition.get("secrets")
+        if secrets:
+            f = Fernet(run.derive_fernet_token())
+            secret_bytes = json.dumps(secrets).encode()
+            encrypted_bytes = f.encrypt(secret_bytes)
+            definition["secrets-encrypted"] = encrypted_bytes.decode()
+            del definition["secrets"]
         self._create_from_string(path, json.dumps(definition))
 
     def get_run_definition(self, run):
         def_str = self._get_as_string(self._get_run_path(run, ".rundef.json"))
-        return json.loads(def_str)
+        rundef = json.loads(def_str)
+        encrypted = rundef.get("secrets-encrypted")
+        if encrypted:
+            f = Fernet(run.derive_fernet_token())
+            secret_bytes = f.decrypt(encrypted.encode())
+            rundef["secrets"] = json.loads(secret_bytes.decode())
+            del rundef["secrets-encrypted"]
+        return rundef
 
     def console_logfd(self, run, mode="r"):
         path = os.path.join(JOBS_DIR, self._get_run_path(run, "console.log"))
