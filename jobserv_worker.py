@@ -320,6 +320,18 @@ WantedBy=multi-user.target
         f.write(svc)
 
 
+def _run_callback(action: str, rundef: dict):
+    cb = config.get("jobserv", "callback_script", fallback=None)
+    if not cb:
+        return
+    env = os.environ.copy()
+    env["PROJECT"] = rundef["env"]["H_PROJECT"]
+    env["BUILD"] = rundef["env"]["H_BUILD"]
+    env["RUN"] = rundef["env"]["H_RUN"]
+    env["ACTION"] = action
+    subprocess.call([cb], env=env)
+
+
 def cmd_register(args):
     """Register this host with the configured JobServ server"""
     _create_conf(
@@ -474,6 +486,7 @@ def _update_max_memory(rundef):
 def _handle_run(jobserv, rundef, rundir=None):
     runsdir = os.path.join(os.path.dirname(script), "runs")
     try:
+        _run_callback("RUN_START", rundef)
         _update_shared_volumes_mapping(rundef)
         _update_max_memory(rundef)
         jobserv.update_run(rundef, "RUNNING", "Setting up runner on worker")
@@ -489,6 +502,7 @@ def _handle_run(jobserv, rundef, rundir=None):
                 )
                 try:
                     m.handler.execute(os.path.dirname(script), rundir, rundef)
+                    _run_callback("RUN_COMPLETE", rundef)
                 except m.handler.RebootAndContinue as e:
                     _handle_reboot(rundir, jobserv, rundef, e.cold)
                 _delete_rundir(rundir)
