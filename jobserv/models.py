@@ -352,14 +352,14 @@ class Build(db.Model, StatusMixin):
             yield build_id
 
     @classmethod
-    def create(clazz, project):
+    def create(clazz, project, init_event_status=BuildStatus.QUEUED):
         last_exc = None
         for build_id in clazz._try_build_ids(project):
             try:
                 b = Build(project, build_id)
                 db.session.add(b)
                 db.session.flush()
-                db.session.add(BuildEvents(b, BuildStatus.QUEUED))
+                db.session.add(BuildEvents(b, init_event_status))
                 db.session.commit()
                 return b
             except IntegrityError as e:
