@@ -178,3 +178,16 @@ def promoted_build_get(proj, name):
         )
     )
     return jsendify({"build": _promoted_as_json(Storage(), b)})
+
+
+@blueprint.route("/external-builds/", methods=("POST",))
+def external_build_create(proj):
+    permissions.assert_can_build(proj)
+    p = Project.query.filter(Project.name == proj).first_or_404()
+    d = request.get_json() or {}
+
+    b = Build.create(p, init_event_status=BuildStatus.PASSED)
+    b.status = BuildStatus.PASSED
+    b.trigger_name = d.get("trigger-name")
+    db.session.commit()
+    return jsendify({"build_id": b.build_id}, 201)

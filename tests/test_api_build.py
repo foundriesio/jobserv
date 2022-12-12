@@ -290,3 +290,28 @@ class BuildAPITest(JobServTest):
             expected[0] = BuildStatus.CANCELLING
 
         self.assertEqual(expected, [x.status for x in b.runs])
+
+    def test_external_build_post(self):
+        headers = {"Content-type": "application/json"}
+        input_data = {
+            "trigger-name": "myapp-github-workflow-ci",
+        }
+        urlbase = "/projects/%s/external-builds/" % self.project.name
+        _sign("http://localhost/projects/proj-1/external-builds/", headers, "POST")
+        resp = self._post(urlbase, json.dumps(input_data), headers, 201)
+        resp_data = json.loads(resp.data.decode())
+        self.assertEqual(resp_data["status"], "success")
+        self.assertEqual(resp_data["data"]["build_id"], 1)
+
+        # make sure the build was added to the DB and its details
+        # are equal to expected one
+        data = self.get_json(self.urlbase + "1/")
+        # check the build data
+        self.assertIsNotNone(data.get("build"))
+        b = data["build"]
+        self.assertEqual(b["build_id"], 1)
+        self.assertEqual(b["status"], BuildStatus.PASSED.name)
+        self.assertIsNotNone(b.get("created"))
+        self.assertIsNotNone(b.get("completed"))
+        self.assertEqual(b["created"], b["completed"])
+        self.assertEqual(b["trigger_name"], input_data["trigger-name"])
