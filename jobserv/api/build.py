@@ -100,10 +100,11 @@ def build_get_latest(proj):
     promoted = request.args.get("promoted")
     if promoted:
         status = BuildStatus.PROMOTED
-    qs = Build.query.join(Build.project).filter(
-        Project.name == proj,
-        Build.status == status,
-    )
+    qs = Build.query.join(Build.project).filter(Project.name == proj)
+    all_builds = request.args.get("all")
+    if not all_builds:
+        qs = qs.filter(Build.status == status)
+
     trigger = request.args.get("trigger_name")
     if trigger:
         qs = qs.filter(Build.trigger_name == trigger)
