@@ -92,6 +92,14 @@ class BuildAPITest(JobServTest):
         data = self.get_json(self.urlbase + "latest/?promoted=1")["build"]
         self.assertEqual(b1.build_id, data["build_id"])
 
+        b2 = Build.create(self.project)
+        b2.status = BuildStatus.FAILED
+        db.session.commit()
+        data = self.get_json(self.urlbase + "latest/")["build"]
+        self.assertEqual(b.build_id, data["build_id"])
+        data = self.get_json(self.urlbase + "latest/?all=1")["build"]
+        self.assertEqual(b2.build_id, data["build_id"])
+
     def test_build_trigger_fails(self):
         # ensure we have a graceful failure when we are triggered
         headers = {}
