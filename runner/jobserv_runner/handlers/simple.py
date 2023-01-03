@@ -500,6 +500,8 @@ class SimpleHandler(object):
                     r.status_code,
                     r.text,
                 )
+        if failed:
+            log.error("Found failure(s)")
         return failed
 
     def test_suite_errors(self):
