@@ -187,6 +187,26 @@ def _filter_events(event):
         raise ApiError(200, "OK, ignoring")
 
 
+def _assert_ok_to_test(repo, labels):
+    # see if project has an "ok-to-test" label
+    url = f"https://api.github.com/repos/{repo}/labels/ok-to-test"
+    r = requests.get(url)
+    if r.status_code == 404:
+        logging.info("ok-to-test not defined for %s - proceeding", repo)
+        return
+    if not r.ok:
+        err = "HTTP_{r.status_code}: {r.text}"
+        raise ApiError(500, "Unable to check for project labels: " + err)
+
+    # ok-to-test is defined - look for the label
+    for lbl in labels:
+        if lbl["name"] == "ok-to-test":
+            logging.info("ok-to-test defined for issue")
+            return
+
+    raise ApiError(200, "Ingoring event: ok-to-test label not set")
+
+
 @blueprint.route("/<project:proj>/", methods=("POST",))
 def on_webhook(proj):
     trigger = _find_trigger(proj)
@@ -194,16 +214,20 @@ def on_webhook(proj):
     _filter_events(event)
 
     data = request.get_json()
+    repo = data["repository"]["full_name"]
     if event == "issue_comment":
         if "ci-retest" not in request.json["comment"]["body"]:
             return "Ingoring comment"
+        _assert_ok_to_test(repo, (data["issue"].get("labels") or []))
         pr_num = data["issue"]["number"]
-        repo = data["repository"]["full_name"]
     elif event == "pull_request":
-        if data["action"] not in ("opened", "synchronize"):
+        if data["action"] not in ("opened", "synchronize", "labeled"):
             return "Ignoring action: " + request.json["action"]
+        _assert_ok_to_test(repo, (data["pull_request"].get("labels") or []))
         pr_num = data["pull_request"]["number"]
         repo = data["pull_request"]["base"]["repo"]["full_name"]
+    else:
+        return f"Ignoring {event}"
 
     reason = "GitHub PR(%s): %s, https://github.com/%s/pull/%d" % (
         pr_num,
