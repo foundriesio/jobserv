@@ -39,6 +39,9 @@ class BaseStorage(object):
     def list_artifacts(self, run):
         raise NotImplementedError()
 
+    def delete_build(self, build):
+        raise NotImplementedError()
+
     def get_download_response(self, request):
         raise NotImplementedError()
 
