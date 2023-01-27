@@ -115,11 +115,7 @@ def _register_github_hook(project, url, api_token, hook_token, server_name):
     data = {
         "name": "web",
         "active": True,
-        "events": [
-            "pull_request",
-            "pull_request_review_comment",
-            "issue_comment",
-        ],
+        "events": ["pull_request", "pull_request_review_comment", "issue_comment",],
         "config": {
             "url": "https://%s/github/%s/" % (server_name, project),
             "content_type": "json",
@@ -309,7 +305,9 @@ def backup(keep_local=False):
 @click.argument("build", type=int, required=True)
 @click.argument("run", required=True)
 @click.argument(
-    "status", required=False, type=click.Choice(["QUEUED", "PASSED", "FAILED"])
+    "status",
+    required=False,
+    type=click.Choice(["QUEUED", "PASSED", "FAILED", "CANCELLING"]),
 )
 def run_status(project, build, run, status=None):
     """Get the status of a Run and optionally set it."""
