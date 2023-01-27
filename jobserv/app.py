@@ -19,6 +19,7 @@ from jobserv.flask import create_app
 from jobserv.git_poller import run
 from jobserv.models import (
     Build,
+    BuildEvents,
     BuildStatus,
     Project,
     ProjectTrigger,
@@ -357,3 +358,36 @@ def create_jwt(ou):
     click.echo(f"# Key Id: {kid}")
     click.echo(pkey)
     click.echo(cert.public_bytes(Encoding.PEM))
+
+
+@app.cli.command("prune-builds")
+@click.argument("project", required=True)
+@click.argument("cutoff_days", required=True, type=int)
+@click.option("--dryrun", default=False, type=bool)
+def prune_builds(project, cutoff_days, dryrun):
+    """Delete non-promoted builds older than the given cutoff"""
+    p = Project.query.filter(Project.name == project).one().id
+    cutoff_date = datetime.datetime.utcnow() - datetime.timedelta(days=cutoff_days)
+    click.echo(f"Looking for builds in {project} before {cutoff_date}...")
+    builds = (
+        Build.query.join(BuildEvents)
+        .filter(
+            Build.proj_id == p,
+            Build.status != BuildStatus.PROMOTED,
+            BuildEvents.time <= cutoff_date,
+        )
+        .order_by(-Build.build_id)
+    )
+    storage = Storage()
+    for b in builds:
+        if dryrun:
+            click.echo(f"DRYRUN would delete: {b.build_id}")
+        else:
+            click.echo(f"Deleting {b.build_id}")
+            try:
+                storage.delete_build(b)
+            except FileNotFoundError:
+                # Maybe we tried to prune this before and hit an error
+                pass
+            db.session.delete(b)
+            db.session.commit()
