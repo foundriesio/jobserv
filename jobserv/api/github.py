@@ -266,11 +266,7 @@ def _register_github_hook(project, url, api_token, hook_token):
     data = {
         "name": "web",
         "active": True,
-        "events": [
-            "pull_request",
-            "pull_request_review_comment",
-            "issue_comment",
-        ],
+        "events": ["pull_request", "pull_request_review_comment", "issue_comment",],
         "config": {
             "url": url_for("api_github.on_webhook", proj=project.name, _external=True),
             "content_type": "json",
