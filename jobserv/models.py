@@ -211,6 +211,9 @@ class StatusComparator(Comparator):
     def __eq__(self, other):
         return self.__clause_element__() == BuildStatus(other).value
 
+    def __ne__(self, other):
+        return self.__clause_element__() != BuildStatus(other).value
+
     def in_(self, states):
         return self.__clause_element__().in_([x.value for x in states])
 

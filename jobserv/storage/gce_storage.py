@@ -73,6 +73,11 @@ class Storage(BaseStorage):
             if not x.name.endswith(".rundef.json")
         ]
 
+    def delete_build(self, build):
+        name = "%s/%s/" % (build.project.name, build.build_id)
+        for blob in self.bucket.list_blobs(prefix=name):
+            blob.delete()
+
     def _generate_put_url(self, run, path, expiration, content_type):
         b = self.bucket.blob(self._get_run_path(run, path))
         return b.generate_signed_url(

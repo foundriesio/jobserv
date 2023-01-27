@@ -64,6 +64,10 @@ class Storage(BaseStorage):
                 if name != ".rundef.json":
                     yield os.path.join(base, name)[len(path) :]
 
+    def delete_build(self, build):
+        path = os.path.join(self.artifacts, build.project.name, str(build.build_id))
+        shutil.rmtree(path)
+
     def get_download_response(self, request, run, path):
         try:
             p = os.path.join(self.artifacts, self._get_run_path(run), path)
