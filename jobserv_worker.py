@@ -44,8 +44,6 @@ if "linux" not in sys.platform:
     log.error("worker only supported on the linux platform")
     sys.exit(1)
 
-FEATURE_NEW_LOOPER = config.getboolean("jobserv", "feature_new_looper", fallback=False)
-
 
 def _host_from_jwt(jwt):
     _, payload, _ = jwt.split(".")
@@ -506,9 +504,6 @@ def _handle_run(jobserv, rundef, rundir=None):
                 except m.handler.RebootAndContinue as e:
                     _handle_reboot(rundir, jobserv, rundef, e.cold)
                 _delete_rundir(rundir)
-                if FEATURE_NEW_LOOPER:
-                    log.info("Exiting new looper after run")
-                    sys.exit(0)
         except SystemExit:
             raise
     except Exception:
@@ -564,9 +559,6 @@ def cmd_check(args):
     if ver != config["jobserv"]["version"]:
         log.warning("Upgrading client to: %s", ver)
         _upgrade_worker(args, ver)
-        if FEATURE_NEW_LOOPER:
-            log.info("Exiting script so changes can apply")
-            sys.exit(0)
 
 
 def _docker_clean():
@@ -597,16 +589,6 @@ def _docker_clean():
         log.exception(e)
 
 
-def _reap_pids():
-    try:
-        os.waitpid(-1, os.WNOHANG)
-    except ChildProcessError:
-        pass  # No children have exited, that's fine
-    except Exception:
-        # Just catch and log so the daemon doesn't die
-        log.exception("Unexpected error wait for pids")
-
-
 def cmd_loop(args):
     # Ensure no other copy of this script is running
     try:
@@ -628,14 +610,9 @@ def cmd_loop(args):
             next_clean = time.time() + (args.docker_rm * 3600)
             while True:
                 log.debug("Calling check")
-                if FEATURE_NEW_LOOPER:
-                    log.debug("Running with new non-forking looper")
-                    _reap_pids()
-                    cmd_check(args)
-                else:
-                    rc = subprocess.call(cmd_args)
-                    if rc:
-                        log.error("Last call exited with rc: %d", rc)
+                rc = subprocess.call(cmd_args)
+                if rc:
+                    log.error("Last call exited with rc: %d", rc)
 
                 now = time.time()
                 if HostProps.idle():
