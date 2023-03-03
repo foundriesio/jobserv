@@ -52,7 +52,9 @@ def _host_from_jwt(jwt):
     return data["name"]
 
 
-def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges, jwt):
+def _create_conf(
+    server_url, hostname, concurrent_runs, host_tags, surges, jwt, insecure_ssl
+):
     with open(script, "rb") as f:
         h = hashlib.md5()
         h.update(f.read())
@@ -65,6 +67,8 @@ def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges, jwt):
     config["jobserv"]["concurrent_runs"] = str(concurrent_runs)
     config["jobserv"]["host_tags"] = host_tags
     config["jobserv"]["surges_only"] = str(int(surges))
+    if insecure_ssl:
+        config["jobserv"]["insecure_ssl"] = "1"
     if jwt:
         hostname = _host_from_jwt(jwt)
         config["jobserv"]["jwt"] = jwt
@@ -191,6 +195,8 @@ def http_do(method, resource, assert_ok=True, **kwargs):
         url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
     if "timeout" not in kwargs:
         kwargs["timeout"] = 15
+    if "insecure_ssl" in config["jobserv"]:
+        kwargs["verify"] = False
     r = requests.request(method, url, **kwargs)
     if assert_ok and not r.ok:
         log.error("Failed to issue %s request to %s: %s\n", method, r.url, r.text)
@@ -333,6 +339,7 @@ def cmd_register(args):
         args.host_tags,
         args.surges_only,
         args.jwt,
+        args.insecure_ssl,
     )
     _create_systemd_service()
     p = HostProps()
@@ -712,6 +719,11 @@ def get_args(args=None):
         "--hostname",
         help="""Worker name to register. If none is provided, the value of
                 /etc/hostname will be used.""",
+    )
+    p.add_argument(
+        "--insecure-ssl",
+        action="store_true",
+        help="Don't verify SSL connections to server. Handy in dev modes where TLS may be self-singed. Default=%(default)s",
     )
     p.add_argument("--jwt", help="A JWT to use for API authentication")
     p.add_argument(
