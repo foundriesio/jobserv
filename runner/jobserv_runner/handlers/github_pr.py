@@ -35,7 +35,7 @@ class GHStatusApi(JobServApi):
         if self.data.get("state") != state:
             self.data["state"] = state
             data = json.dumps(self.data).encode()
-            _post(self.status_url, data, self.headers, raise_error=True)
+            _post(self.status_url, data, self.headers, None, raise_error=True)
         return rv
 
 

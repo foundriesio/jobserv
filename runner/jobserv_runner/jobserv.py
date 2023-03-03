@@ -6,11 +6,11 @@ import json
 import logging
 import mimetypes
 import os
+import ssl
 import time
 import urllib.error
 import urllib.request
 import urllib.parse
-
 from http.client import HTTPException
 from socket import timeout
 
@@ -43,10 +43,10 @@ def urllib_error_str(e):
     return error
 
 
-def _post(url, data, headers, raise_error=False):
+def _post(url, data, headers, ssl_ctx, raise_error=False):
     req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
-        resp = urllib.request.urlopen(req, timeout=15)
+        resp = urllib.request.urlopen(req, timeout=15, context=ssl_ctx)
         if resp.headers.get("X-JOBSERV-CANCEL"):
             raise RunCancelledError()
         return resp
@@ -63,11 +63,16 @@ def _post(url, data, headers, raise_error=False):
 
 class JobServApi(object):
     SIMULATED = False
+    VERIFY_SSL = True
 
     def __init__(self, run_url, api_key):
         mimetypes.add_type("text/plain", ".log")
         self._run_url = run_url
         self._api_key = api_key
+        self.ssl_ctx = ssl.create_default_context()
+        if not self.VERIFY_SSL:
+            self.ssl_ctx.check_hostname = False
+            self.ssl_ctx.verify_mode = ssl.CERT_NONE
 
     def _post(self, data, headers, retry):
         if self.SIMULATED:
@@ -75,7 +80,7 @@ class JobServApi(object):
                 return os.write(1, data)
             return True
         for x in range(retry):
-            if _post(self._run_url, data, headers):
+            if _post(self._run_url, data, headers, self.ssl_ctx):
                 return True
             time.sleep(2 * x + 1)  # try and give the server a moment
         return False
@@ -113,7 +118,7 @@ class JobServApi(object):
             return
         url = self._run_url + "tests/%s/" % test_name
         for x in range(3):
-            r = requests.post(url, json=test, headers=headers)
+            r = requests.post(url, json=test, headers=headers, verify=self.VERIFY_SSL)
             if r.status_code == 200:
                 return
             time.sleep(2 * x + 1)  # try and give the server a moment
@@ -133,7 +138,7 @@ class JobServApi(object):
         data = json.dumps(urls).encode()
         for i in range(1, 5):
             try:
-                resp = _post(url, data, headers)
+                resp = _post(url, data, headers, self.ssl_ctx)
                 return json.loads(resp.read().decode())["data"]["urls"]
             except Exception:
                 if i == 4:
@@ -146,7 +151,9 @@ class JobServApi(object):
         with open(os.path.join(artifacts_dir, artifact), "rb") as f:
             try:
                 headers = {"Content-Type": urldata["content-type"]}
-                r = requests.put(urldata["url"], data=f, headers=headers)
+                r = requests.put(
+                    urldata["url"], data=f, headers=headers, verify=self.VERIFY_SSL
+                )
                 if r.status_code not in (200, 201):
                     return "Unable to upload %s: HTTP_%d\n%s" % (
                         artifact,

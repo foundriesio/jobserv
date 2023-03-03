@@ -496,6 +496,9 @@ def _handle_run(jobserv, rundef, rundir=None):
         try:
             if os.fork() == 0:
                 sys.path.insert(0, _download_runner(rundef["runner_url"], rundir))
+                if "insecure_ssl" in config["jobserv"]:
+                    m = importlib.import_module("jobserv_runner.jobserv")
+                    m.JobServApi.VERIFY_SSL = False
                 m = importlib.import_module(
                     "jobserv_runner.handlers." + rundef["trigger_type"]
                 )
