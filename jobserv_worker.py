@@ -184,10 +184,21 @@ class HostProps(object):
             return avail == len(locks)
 
 
-class JobServ(object):
-    def __init__(self):
-        self.requests = requests
+def http_do(method, resource, assert_ok=True, **kwargs):
+    if resource.startswith("http"):
+        url = resource
+    else:
+        url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
+    if "timeout" not in kwargs:
+        kwargs["timeout"] = 15
+    r = requests.request(method, url, **kwargs)
+    if assert_ok and not r.ok:
+        log.error("Failed to issue %s request to %s: %s\n", method, r.url, r.text)
+        sys.exit(1)
+    return r
 
+
+class JobServ(object):
     def _auth_headers(self):
         headers = {}
         jwt = config["jobserv"].get("jwt")
@@ -198,40 +209,21 @@ class JobServ(object):
         return headers
 
     def _get(self, resource, params=None, json=None):
-        url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.get(
-            url, params=params, json=json, headers=self._auth_headers(), timeout=15
+        return http_do(
+            "GET", resource, params=params, json=json, headers=self._auth_headers()
         )
-        if r.status_code != 200:
-            log.error("Failed to issue request to %s: %s\n", r.url, r.text)
-            sys.exit(1)
-        return r
 
     def _post(self, resource, data, use_auth_headers=False):
         headers = None
         if use_auth_headers:
             headers = self._auth_headers()
-        url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.post(url, json=data, headers=headers, timeout=15)
-        if r.status_code != 201:
-            log.error("Failed to issue request: %s\n" % r.text)
-            sys.exit(1)
+        http_do("POST", resource, json=data, headers=headers)
 
     def _patch(self, resource, data):
-        url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.patch(
-            url, json=data, headers=self._auth_headers(), timeout=15
-        )
-        if r.status_code != 200:
-            log.error("Failed to issue request: %s\n" % r.text)
-            sys.exit(1)
+        http_do("PATCH", resource, json=data, headers=self._auth_headers())
 
     def _delete(self, resource):
-        url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
-        r = self.requests.delete(url, headers=self._auth_headers(), timeout=15)
-        if r.status_code != 200:
-            log.error("Failed to issue request: %s\n" % r.text)
-            sys.exit(1)
+        http_do("DELETE", resource, headers=self._auth_headers())
 
     def create_host(self, hostprops):
         if "jwt" in config["jobserv"]:
@@ -285,7 +277,9 @@ class JobServ(object):
             if i:
                 log.info("Failed to update run, sleeping and retrying")
                 time.sleep(2 * i)
-            r = self.requests.post(rundef["run_url"], data=msg, headers=headers)
+            r = http_do(
+                "POST", rundef["run_url"], assert_ok=False, data=msg, headers=headers
+            )
             if r.status_code == 200:
                 break
         else:
@@ -376,7 +370,7 @@ def _upgrade_worker(args, version):
 
 def _download_runner(url, rundir, retries=3):
     for i in range(1, retries + 1):
-        r = requests.get(url, stream=True)
+        r = http_do("GET", url, assert_ok=False, stream=True)
         if r.status_code == 200:
             runner = os.path.join(rundir, "runner.whl")
             with open(runner, "wb") as f:
