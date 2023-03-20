@@ -84,6 +84,7 @@ scripts:
     apk --no-cache add git python3-dev musl-dev g++ openssl libffi-dev openssl-dev rust cargo
     git config --global user.email "cibot@example.com"
     git config --global user.name "cibot"
+    git config --system protocol.file.allow always  # for GitPollerHandlerTest.test_git_submodules
 
     ls /lmp-bitbake-cache/
     sh ./unit-test.sh
