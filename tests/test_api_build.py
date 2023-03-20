@@ -277,6 +277,15 @@ class BuildAPITest(JobServTest):
         self.assertEqual(data["name"], b.name)
         self.assertEqual(data["annotation"], b.annotation)
 
+    def test_patch(self):
+        b = Build.create(self.project)
+
+        url = "http://localhost/projects/proj-1/builds/%d/" % b.build_id
+        data = {"annotation": "this is a test"}
+        self.patch_signed_json(url, data)
+        db.session.refresh(b)
+        self.assertEqual(data["annotation"], b.annotation)
+
     def test_cancel(self):
         b = Build.create(self.project)
         db.session.add(Run(b, "run0"))

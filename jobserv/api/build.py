@@ -78,6 +78,22 @@ def build_create(proj):
     return jsendify({"url": url, "build_id": b.build_id, "web_url": weburl}, 201)
 
 
+@blueprint.route("/builds/<int:build_id>/", methods=("PATCH",))
+def build_patch(proj, build_id):
+    permissions.assert_can_build(proj)
+    p = Project.query.filter(Project.name == proj).first_or_404()
+    b = get_or_404(Build.query.filter(Build.project == p, Build.build_id == build_id))
+
+    d = request.get_json() or {}
+    annotation = d.get("annotation")
+    if annotation:
+        b.annotation = annotation
+        db.session.commit()
+        return jsendify({}), 200
+
+    raise ApiError(400, "No changes found in payload")
+
+
 @blueprint.route("/builds/<int:build_id>/", methods=("GET",))
 def build_get(proj, build_id):
     p = get_or_404(Project.query.filter(Project.name == proj))
