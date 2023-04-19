@@ -459,17 +459,26 @@ def _update_shared_volumes_mapping(rundef):
       /path/on/host1: /path/in/container1
       /path/on/host2: /path/in/container2
     """
+    mapping = {}
     shared_vols = rundef.get("shared-volumes")
     if shared_vols:
         if not config.has_section("shared-volumes"):
             raise ValueError("Host does not have shared volumes configured")
-        mapping = {}
         for name, container_path in shared_vols.items():
             try:
                 host_path = config.get("shared-volumes", name)
                 mapping[host_path] = container_path
             except NoOptionError:
                 raise ValueError("Host does not have shared volume " + name)
+    try:
+        shared_certs_dir = "/usr/local/share/ca-certificates"
+        extra_certs = os.listdir(shared_certs_dir)
+        if extra_certs:
+            mapping[shared_certs_dir] = shared_certs_dir
+    except FileNotFoundError:
+        pass  # OKAY, just no extra certs the runner needs
+
+    if mapping:
         rundef["shared-volumes"] = mapping
 
 
