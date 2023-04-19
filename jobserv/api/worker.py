@@ -87,6 +87,7 @@ def _fix_run_urls(rundef):
 
     rundef["run_url"] = public + urllib.parse.urlparse(rundef["run_url"]).path
     rundef["runner_url"] = public + urllib.parse.urlparse(rundef["runner_url"]).path
+    rundef["env"]["H_RUN_URL"] = rundef["run_url"]
     url = rundef["env"].get("H_TRIGGER_URL")
     if url:
         rundef["env"]["H_TRIGGER_URL"] = public + urllib.parse.urlparse(url).path
