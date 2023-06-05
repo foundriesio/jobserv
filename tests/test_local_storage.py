@@ -44,8 +44,14 @@ class LocalStorageTest(JobServTest):
         self.storage._create_from_string(os.path.join(path, "file1.txt"), "a")
         self.storage._create_from_string(os.path.join(path, "file2.txt"), "b")
         self.storage._create_from_string(os.path.join(path, "subdir/1"), "c")
-        expected = ["file1.txt", "file2.txt", "subdir/1"]
-        found = list(sorted(self.storage.list_artifacts(self.run)))
+        expected = [
+            {"name": "file1.txt", "size_bytes": 1},
+            {"name": "file2.txt", "size_bytes": 1},
+            {"name": "subdir/1", "size_bytes": 1},
+        ]
+        found = list(
+            sorted(self.storage.list_artifacts(self.run), key=lambda x: x["name"])
+        )
         self.assertEqual(expected, found)
 
     @mock.patch("jobserv.api.run.Storage")

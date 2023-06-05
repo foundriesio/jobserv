@@ -168,7 +168,7 @@ def _promoted_as_json(storage, build):
             test["name"] = "%s-%s" % (run.name, test["name"])
             rv["tests"].append(test)
         for a in storage.list_artifacts(run):
-            rv["artifacts"].append("%s/%s" % (run.name, a))
+            rv["artifacts"].append("%s/%s" % (run.name, a["name"]))
     return rv
 
 

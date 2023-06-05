@@ -68,7 +68,10 @@ class Storage(BaseStorage):
     def list_artifacts(self, run):
         name = "%s/%s/%s/" % (run.build.project.name, run.build.build_id, run.name)
         return [
-            x.name[len(name) :]
+            {
+                "name": x.name[len(name) :],
+                "size_bytes": x.size,
+            }
             for x in self.bucket.list_blobs(prefix=name)
             if not x.name.endswith(".rundef.json")
         ]

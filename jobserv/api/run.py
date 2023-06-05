@@ -48,7 +48,7 @@ def run_get(proj, build_id, run):
             proj=proj,
             build_id=build_id,
             run=run,
-            path=a,
+            path=a["name"],
             _external=True,
         )
         artifacts.append(u)
