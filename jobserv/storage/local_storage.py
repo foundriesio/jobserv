@@ -62,7 +62,13 @@ class Storage(BaseStorage):
         for base, _, names in os.walk(path):
             for name in names:
                 if name != ".rundef.json":
-                    yield os.path.join(base, name)[len(path) :]
+                    name = os.path.join(base, name)
+                    size = os.stat(name).st_size
+                    item = {
+                        "name": name[len(path) :],
+                        "size_bytes": size,
+                    }
+                    yield item
 
     def delete_build(self, build):
         path = os.path.join(self.artifacts, build.project.name, str(build.build_id))

@@ -42,16 +42,20 @@ def run_get(proj, build_id, run):
     r = _get_run(proj, build_id, run)
     data = r.as_json(detailed=True)
     artifacts = []
+    v2 = request.args.get("version") == "v2"
     for a in Storage().list_artifacts(r):
         u = url_for(
             "api_run.run_get_artifact",
             proj=proj,
             build_id=build_id,
             run=run,
-            path=a,
+            path=a["name"],
             _external=True,
         )
-        artifacts.append(u)
+        if v2:
+            artifacts.append({"url": u, "size_bytes": a["size_bytes"]})
+        else:
+            artifacts.append(u)
     data["artifacts"] = artifacts
     return jsendify({"run": data})
 
