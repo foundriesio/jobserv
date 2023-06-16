@@ -3,7 +3,6 @@
 
 import os
 import datetime
-import logging
 from time import sleep
 
 from flask import redirect
@@ -11,10 +10,9 @@ from google.api_core.exceptions import ServiceUnavailable
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
+from jobserv.log import log
 from jobserv.settings import GCE_BUCKET
 from jobserv.storage.base import BaseStorage
-
-log = logging.getLogger("jobserv.flask")
 
 
 def retry():

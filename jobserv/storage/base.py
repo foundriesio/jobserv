@@ -5,14 +5,12 @@ import contextlib
 import datetime
 import json
 import os
-import logging
 import mimetypes
 
 from cryptography.fernet import Fernet
 
+from jobserv.log import log
 from jobserv.settings import JOBS_DIR
-
-log = logging.getLogger("jobserv.flask")
 
 
 class BaseStorage(object):
