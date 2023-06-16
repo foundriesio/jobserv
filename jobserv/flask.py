@@ -14,6 +14,7 @@ from werkzeug.routing import UnicodeConverter
 
 from jobserv.settings import PROJECT_NAME_REGEX
 
+from jobserv.log import log_init
 from jobserv.jsend import jsendify
 from jobserv.settings import PERMISSIONS_MODULE
 
@@ -58,6 +59,8 @@ def create_app(settings_object="jobserv.settings"):
     app = Flask(__name__)
     app.wsgi_app = ProxyFix(app.wsgi_app)
     app.config.from_object(settings_object)
+
+    log_init(app)
 
     ProjectConverter.settings = settings_object
     app.url_map.converters["project"] = ProjectConverter
