@@ -58,7 +58,6 @@ def register_blueprints(app):
                 "error_msg": str(e),
                 "stack_trace": traceback.format_exc(),
             }
-            print(dir(bp))
             current_app.logger.exception("Unexpected error caught in BP error handler")
             return jsendify(data, 500)
 
