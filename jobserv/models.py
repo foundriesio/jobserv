@@ -8,7 +8,6 @@ import enum
 import fcntl
 import fnmatch
 import json
-import logging
 import os
 import random
 import string
@@ -25,6 +24,7 @@ from sqlalchemy.dialects.mysql import MEDIUMTEXT
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import Comparator, hybrid_property
 
+from jobserv.log import log
 from jobserv.settings import (
     BUILD_URL_FMT,
     JOBS_DIR,
@@ -849,4 +849,4 @@ class Worker(db.Model):
             with StatsClient() as c:
                 c.worker_ping(self, now, kwargs)
         except Exception:
-            logging.exception("Unable to update metrics for " + self.name)
+            log.exception("Unable to update metrics for " + self.name)
