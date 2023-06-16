@@ -5,7 +5,6 @@ import contextlib
 import functools
 import hmac
 import json
-import logging
 import requests
 import smtplib
 import time
@@ -19,6 +18,7 @@ from flask import url_for
 
 from jobserv.flask import ISO8601_JSONEncoder
 from jobserv.jsend import ApiError
+from jobserv.log import log
 from jobserv.models import Build, BuildStatus
 from jobserv.settings import (
     BUILD_URL_FMT,
@@ -28,8 +28,6 @@ from jobserv.settings import (
     SMTP_USER,
     SMTP_PASSWORD,
 )
-
-log = logging.getLogger("jobserv.flask")
 
 
 def build_url(build):
@@ -170,16 +168,16 @@ def notify_build_complete_webhook(build, webhook_url, secret):
                 if r.ok:
                     log.info("Delivered webhook to %s", webhook_url)
                     return
-                logging.error(
+                log.error(
                     "Unable to deliver webhook to %s: HTTP_%d - %s",
                     webhook_url,
                     r.status_code,
                     r.text,
                 )
             except Exception:
-                logging.exception("Unable to deliver webhook")
+                log.exception("Unable to deliver webhook")
             if i:
-                logging.info("Retrying in %d seconds", i)
+                log.info("Retrying in %d seconds", i)
                 time.sleep(i)
 
     Thread(target=deliver).start()
