@@ -1,7 +1,6 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
 
-import logging
 import traceback
 
 import yaml
@@ -9,6 +8,7 @@ import yaml
 from flask import url_for
 
 from jobserv.jsend import ApiError
+from jobserv.log import log
 from jobserv.models import Build, BuildStatus, Run, db
 from jobserv.project import ProjectDefinition
 from jobserv.settings import BUILD_URL_FMT
@@ -26,11 +26,11 @@ def _check_for_trigger_upgrade(rundef, trigger_type, parent_trigger_type):
     if parent_trigger_type == "github_pr":
         if trigger_type == "simple":
             rundef["trigger_type"] = "github_pr"
-            logging.info("Updating the rundef from simple->github_pr")
+            log.info("Updating the rundef from simple->github_pr")
     elif parent_trigger_type == "git_poller":
         if trigger_type == "simple":
             rundef["trigger_type"] = "git_poller"
-            logging.info("Updating the rundef from simple->gith_poller")
+            log.info("Updating the rundef from simple->gith_poller")
 
 
 def trigger_runs(
@@ -57,12 +57,12 @@ def trigger_runs(
             _check_for_trigger_upgrade(rundef, trigger["type"], parent_type)
             storage.set_run_definition(r, rundef)
     except ApiError:
-        logging.exception("ApiError while triggering runs for: %r", trigger)
+        log.exception("ApiError while triggering runs for: %r", trigger)
         raise
     except ValueError:
         raise
     except Exception as e:
-        logging.exception("Unexpected error creating runs for: %r", trigger)
+        log.exception("Unexpected error creating runs for: %r", trigger)
         build.status = BuildStatus.FAILED
         for r in added:
             r.status = BuildStatus.FAILED
