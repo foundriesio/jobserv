@@ -7,6 +7,7 @@ from jobserv.flask import permissions
 from jobserv.settings import BUILD_URL_FMT
 from jobserv.storage import Storage
 from jobserv.jsend import ApiError, get_or_404, jsendify, paginate, paginate_custom
+from jobserv.log import log_add_ctx
 from jobserv.models import Build, BuildStatus, Project, TriggerTypes, db
 from jobserv.trigger import trigger_build
 
@@ -15,6 +16,7 @@ blueprint = Blueprint("api_build", __name__, url_prefix="/projects/<project:proj
 
 @blueprint.route("/builds/", methods=("GET",))
 def build_list(proj):
+    log_add_ctx(project=proj)
     p = get_or_404(Project.query.filter(Project.name == proj))
     q = Build.query.filter_by(proj_id=p.id).order_by(Build.id.desc())
     return paginate("builds", q)
@@ -22,6 +24,7 @@ def build_list(proj):
 
 @blueprint.route("/builds/", methods=("POST",))
 def build_create(proj):
+    log_add_ctx(project=proj)
     u = permissions.assert_can_build(proj)
     p = Project.query.filter(Project.name == proj).first_or_404()
     d = request.get_json() or {}
@@ -80,6 +83,7 @@ def build_create(proj):
 
 @blueprint.route("/builds/<int:build_id>/", methods=("PATCH",))
 def build_patch(proj, build_id):
+    log_add_ctx(project=proj, build_id=build_id)
     permissions.assert_can_build(proj)
     p = Project.query.filter(Project.name == proj).first_or_404()
     b = get_or_404(Build.query.filter(Build.project == p, Build.build_id == build_id))
@@ -96,6 +100,7 @@ def build_patch(proj, build_id):
 
 @blueprint.route("/builds/<int:build_id>/", methods=("GET",))
 def build_get(proj, build_id):
+    log_add_ctx(project=proj, build_id=build_id)
     p = get_or_404(Project.query.filter(Project.name == proj))
     b = get_or_404(Build.query.filter(Build.project == p, Build.build_id == build_id))
     return jsendify({"build": b.as_json(detailed=True)})
@@ -103,6 +108,7 @@ def build_get(proj, build_id):
 
 @blueprint.route("/builds/<int:build_id>/project.yml", methods=("GET",))
 def build_get_project_definition(proj, build_id):
+    log_add_ctx(project=proj, build_id=build_id)
     p = get_or_404(Project.query.filter(Project.name == proj))
     b = get_or_404(Build.query.filter(Build.project == p, Build.build_id == build_id))
     pd = Storage().get_project_definition(b)
@@ -112,6 +118,7 @@ def build_get_project_definition(proj, build_id):
 @blueprint.route("/builds/latest/", methods=("GET",))
 def build_get_latest(proj):
     """Return the most recent successful build"""
+    log_add_ctx(project=proj)
     status = BuildStatus.PASSED
     promoted = request.args.get("promoted")
     if promoted:
@@ -130,6 +137,7 @@ def build_get_latest(proj):
 
 @blueprint.route("/builds/<int:build_id>/cancel", methods=("POST",))
 def build_cancel(proj, build_id):
+    log_add_ctx(project=proj, build_id=build_id)
     permissions.assert_can_build(proj)
     p = get_or_404(Project.query.filter_by(name=proj))
     b = get_or_404(Build.query.filter_by(project=p, build_id=build_id))
@@ -140,6 +148,7 @@ def build_cancel(proj, build_id):
 
 @blueprint.route("/builds/<int:build_id>/promote", methods=("POST",))
 def build_promote(proj, build_id):
+    log_add_ctx(project=proj, build_id=build_id)
     permissions.assert_can_promote(proj, build_id)
     p = get_or_404(Project.query.filter_by(name=proj))
     b = get_or_404(Build.query.filter_by(project=p, build_id=build_id))
@@ -174,6 +183,7 @@ def _promoted_as_json(storage, build):
 
 @blueprint.route("/promoted-builds/", methods=("GET",))
 def promoted_build_list(proj):
+    log_add_ctx(project=proj)
     p = get_or_404(Project.query.filter_by(name=proj))
     q = (
         Build.query.filter(Build.proj_id == p.id)
@@ -187,6 +197,7 @@ def promoted_build_list(proj):
 
 @blueprint.route("/promoted-builds/<name>/", methods=("GET",))
 def promoted_build_get(proj, name):
+    log_add_ctx(project=proj, name=name)
     b = get_or_404(
         Build.query.join(Project).filter(
             Project.name == proj,
@@ -199,6 +210,7 @@ def promoted_build_get(proj, name):
 
 @blueprint.route("/external-builds/", methods=("POST",))
 def external_build_create(proj):
+    log_add_ctx(project=proj)
     permissions.assert_can_build(proj)
     p = Project.query.filter(Project.name == proj).first_or_404()
     d = request.get_json() or {}

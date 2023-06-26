@@ -11,6 +11,7 @@ from flask import Blueprint, current_app, make_response, request, send_file, url
 from jobserv.flask import permissions
 from jobserv.storage import Storage
 from jobserv.jsend import ApiError, get_or_404, jsendify
+from jobserv.log import log_add_ctx
 from jobserv.models import db, Build, BuildStatus, Project, Run, Test, TestResult
 from jobserv.project import ProjectDefinition
 from jobserv.notify import notify_build_complete_email, notify_build_complete_webhook
@@ -22,12 +23,14 @@ blueprint = Blueprint("api_run", __name__, url_prefix=prefix)
 
 @blueprint.route("/", methods=("GET",))
 def run_list(proj, build_id):
+    log_add_ctx(project=proj, build_id=build_id)
     p = get_or_404(Project.query.filter_by(name=proj))
     b = get_or_404(Build.query.filter_by(project=p, build_id=build_id))
     return jsendify({"runs": [x.as_json(detailed=False) for x in b.runs]})
 
 
 def _get_run(proj, build_id, run):
+    log_add_ctx(project=proj, build_id=build_id, run=run)
     p = get_or_404(Project.query.filter_by(name=proj))
     b = get_or_404(Build.query.filter_by(project=p, build_id=build_id))
     return (

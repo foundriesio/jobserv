@@ -5,6 +5,7 @@ from flask import Blueprint, request, url_for
 
 from jobserv.flask import permissions
 from jobserv.jsend import ApiError, get_or_404, jsendify, paginate_custom
+from jobserv.log import log_add_ctx
 from jobserv.models import (
     Build,
     BuildStatus,
@@ -31,6 +32,7 @@ def project_create():
     if not proj:
         raise ApiError(401, 'Missing required parameter: "name"')
     sync = d.get("synchronous-builds", False)
+    log_add_ctx(proj=proj)
 
     permissions.assert_internal_user()
     db.session.add(Project(proj, sync))
@@ -43,6 +45,7 @@ def project_create():
 @blueprint.route("/<project:proj>/", methods=("DELETE",))
 def project_delete(proj):
     permissions.assert_can_delete(proj)
+    log_add_ctx(proj=proj)
 
     p = get_or_404(Project.query.filter_by(name=proj))
 
@@ -64,12 +67,14 @@ def project_delete(proj):
 
 @blueprint.route("/<project:proj>/", methods=("GET",))
 def project_get(proj):
+    log_add_ctx(proj=proj)
     p = get_or_404(Project.query.filter_by(name=proj))
     return jsendify({"project": p.as_json(detailed=True)})
 
 
 @blueprint.route("/<project:proj>/history/<run>/", methods=("GET",))
 def project_run_history(proj, run):
+    log_add_ctx(proj=proj, run=run)
     q = (
         Run.query.join(Build, Project)
         .filter(Project.name == proj, Run.name == run)
@@ -91,6 +96,7 @@ def project_run_history(proj, run):
 
 @blueprint.route("/<project:proj>/triggers/", methods=("GET",))
 def project_trigger_list(proj):
+    log_add_ctx(proj=proj)
     permissions.assert_can_build(proj)
     p = get_or_404(Project.query.filter_by(name=proj))
     triggers = p.triggers
@@ -110,6 +116,7 @@ def project_trigger_list(proj):
 
 @blueprint.route("/<project:proj>/triggers/", methods=("POST",))
 def project_create_trigger(proj):
+    log_add_ctx(proj=proj)
     u = permissions.assert_create_trigger(proj)
     p = get_or_404(Project.query.filter_by(name=proj))
 
@@ -140,6 +147,7 @@ def project_create_trigger(proj):
     except KeyError:
         secrets = d
 
+    log_add_ctx(ttype=ttype, owner=owner)
     db.session.add(ProjectTrigger(owner, ttype, p, dr, df, secrets))
 
     db.session.commit()
@@ -148,6 +156,7 @@ def project_create_trigger(proj):
 
 @blueprint.route("/<project:proj>/triggers/<int:tid>/", methods=("PATCH",))
 def project_patch_trigger(proj, tid):
+    log_add_ctx(proj=proj)
     permissions.assert_can_build(proj)
     trigger = get_or_404(ProjectTrigger.query.filter(ProjectTrigger.id == tid))
     if trigger.project.name != proj:
@@ -157,10 +166,12 @@ def project_patch_trigger(proj, tid):
     data = request.get_json() or {}
     val = data.get("definition_file")
     if val:
+        log_add_ctx(df=val)
         trigger.definition_file = val
 
     val = data.get("definition_repo")
     if val:
+        log_add_ctx(dr=val)
         trigger.definition_repo = val
 
     val = data.get("secrets")

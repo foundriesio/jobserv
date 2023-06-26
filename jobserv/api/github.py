@@ -2,7 +2,6 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import hmac
-import logging
 import secrets
 import time
 import traceback
@@ -16,6 +15,7 @@ from flask import Blueprint, request, url_for
 
 from jobserv.flask import permissions
 from jobserv.jsend import ApiError, get_or_404, jsendify
+from jobserv.log import log
 from jobserv.models import Project, ProjectTrigger, TriggerTypes, db
 from jobserv.settings import GITLAB_SERVERS, RUN_URL_FMT
 from jobserv.trigger import trigger_build
@@ -46,7 +46,7 @@ def _get_params(owner, repo, pr_num, token):
                     "GIT_SHA": data["head"]["sha"],
                 }
             except Exception:
-                logging.error("Error finding SHA: %d - %s", r.status_code, r.text)
+                log.error("Error finding SHA: %d - %s", r.status_code, r.text)
         time.sleep(0.2)
     raise ApiError(500, "Error finding SHA: %d - %s" % (r.status_code, r.text))
 
@@ -192,7 +192,7 @@ def _assert_ok_to_test(repo, labels):
     url = f"https://api.github.com/repos/{repo}/labels/ok-to-test"
     r = requests.get(url)
     if r.status_code == 404:
-        logging.info("ok-to-test not defined for %s - proceeding", repo)
+        log.info("ok-to-test not defined for %s - proceeding", repo)
         return
     if not r.ok:
         err = "HTTP_{r.status_code}: {r.text}"
@@ -201,7 +201,7 @@ def _assert_ok_to_test(repo, labels):
     # ok-to-test is defined - look for the label
     for lbl in labels:
         if lbl["name"] == "ok-to-test":
-            logging.info("ok-to-test defined for issue")
+            log.info("ok-to-test defined for issue")
             return
 
     raise ApiError(200, "Ingoring event: ok-to-test label not set")
