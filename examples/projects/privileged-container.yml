@@ -10,6 +10,16 @@ triggers:
         privileged: true
         script: compile
 
+      - name: cap-add-drop-example
+        container: alpine
+        host-tag: amd64
+        cap-add:
+        - NET_ADMIN
+        - SYS_ADMIN
+        cap-drop:
+        - MKNOD
+        script: compile
+
 scripts:
   compile: |
     #!/bin/sh -ex

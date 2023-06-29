@@ -107,6 +107,16 @@ mapping:
                   container-auth:
                     type: str
                     required: False
+                  cap-add:
+                    type: seq
+                    required: False
+                    sequence:
+                      - type: str
+                  cap-drop:
+                    type: seq
+                    required: False
+                    sequence:
+                      - type: str
                   privileged:
                     type: bool
                     required: false
