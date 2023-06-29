@@ -237,6 +237,16 @@ class SimpleHandler(object):
             if self.rundef.get("privileged"):
                 log.info('Running with "--privileged"')
                 cmd.append("--privileged")
+            if self.rundef.get("cap-add"):
+                adds = self.rundef.get("cap-add")
+                log.info("Running with cap-adds: %s", adds)
+                for add in adds:
+                    cmd.extend(["--cap-add", add])
+            if self.rundef.get("cap-drop"):
+                drops = self.rundef.get("cap-drop")
+                log.info("Running with cap-drops: %s", drops)
+                for drop in drops:
+                    cmd.extend(["--cap-drop", drop])
             if self.rundef.get("max-mem-bytes"):
                 maxbytes = self.rundef.get("max-mem-bytes")
                 log.info("Running with --memory=%d", maxbytes)
