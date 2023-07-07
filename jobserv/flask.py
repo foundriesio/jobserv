@@ -64,7 +64,7 @@ def create_app(settings_object="jobserv.settings"):
     # this gets called a couple times.
     if not getattr(create_app, "__logging_hack_initialized", None):
         json_logging.init_flask(enable_json=True)
-        json_logging.init_request_instrument(app)
+        json_logging.init_request_instrument(app, exclude_url_patterns=["/healthz"])
         json_logging.config_root_logger()
         create_app.__logging_hack_initialized = True
 

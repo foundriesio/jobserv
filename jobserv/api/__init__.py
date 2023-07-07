@@ -62,3 +62,7 @@ def register_blueprints(app):
             return jsendify(data, 500)
 
         app.register_blueprint(bp)
+
+    @app.route("/healthz")
+    def _healthz():
+        return ""
