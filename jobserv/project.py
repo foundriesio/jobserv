@@ -118,6 +118,8 @@ class ProjectDefinition(object):
             "container": run["container"],
             "container-auth": run.get("container-auth"),
             "privileged": run.get("privileged", False),
+            "cap-add": run.get("cap-add", None),
+            "cap-drop": run.get("cap-drop", None),
             "container-user": run.get("container-user"),
             "container-entrypoint": run.get("container-entrypoint"),
             "env": {},

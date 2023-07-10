@@ -9,6 +9,7 @@ from flask import Flask, request
 from flask.json import JSONEncoder
 from flask_migrate import Migrate
 
+import json_logging
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.routing import UnicodeConverter
 
@@ -58,6 +59,14 @@ def create_app(settings_object="jobserv.settings"):
     app = Flask(__name__)
     app.wsgi_app = ProxyFix(app.wsgi_app)
     app.config.from_object(settings_object)
+
+    # json_logging can only be initialized *once*. When running with gunicorn,
+    # this gets called a couple times.
+    if not getattr(create_app, "__logging_hack_initialized", None):
+        json_logging.init_flask(enable_json=True)
+        json_logging.init_request_instrument(app, exclude_url_patterns=["/healthz"])
+        json_logging.config_root_logger()
+        create_app.__logging_hack_initialized = True
 
     ProjectConverter.settings = settings_object
     app.url_map.converters["project"] = ProjectConverter
