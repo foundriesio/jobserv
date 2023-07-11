@@ -292,6 +292,7 @@ def backup(keep_local=False):
         "--password=" + db.engine.url.password,
         "--host=" + db.engine.url.host,
         "--single-transaction",
+        "--no-tablespaces",
         db.engine.url.database,
     )
     backup = "/data/jobserv-db.sql-%s" % datetime.datetime.now()
