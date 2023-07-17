@@ -35,6 +35,17 @@ class ProjectConverter(UnicodeConverter):
             self.regex = PROJECT_NAME_REGEX
 
 
+class RequestIdMiddleware(ProxyFix):
+    def __call__(self, environ, start_response) -> Flask:
+        corid = json_logging.get_correlation_id()
+
+        def new_start_response(status, response_headers, exc_info=None):
+            response_headers.append(("x-correlation-id", corid))
+            return start_response(status, response_headers, exc_info)
+
+        return ProxyFix.__call__(self, environ, new_start_response)
+
+
 def _user_has_permission():
     # These are secured by "authenticate_runner" and "assert_internal_user"
     if request.method in ("POST", "PATCH", "PUT"):
@@ -57,7 +68,7 @@ def _handle_404(e):
 
 def create_app(settings_object="jobserv.settings"):
     app = Flask(__name__)
-    app.wsgi_app = ProxyFix(app.wsgi_app)
+    app.wsgi_app = RequestIdMiddleware(app.wsgi_app)
     app.config.from_object(settings_object)
 
     # json_logging can only be initialized *once*. When running with gunicorn,
