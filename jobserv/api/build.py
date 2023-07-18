@@ -162,13 +162,25 @@ def _promoted_as_json(storage, build):
     rv = build.as_json(detailed=True)
     rv["tests"] = []
     rv["artifacts"] = []
+    v2 = request.args.get("version") == "v2"
     for run in build.runs:
         for t in run.tests:
             test = t.as_json(detailed=True)
             test["name"] = "%s-%s" % (run.name, test["name"])
             rv["tests"].append(test)
         for a in storage.list_artifacts(run):
-            rv["artifacts"].append("%s/%s" % (run.name, a["name"]))
+            if v2:
+                u = url_for(
+                    "api_run.run_get_artifact",
+                    proj=build.project.name,
+                    build_id=build.build_id,
+                    run=run.name,
+                    path=a["name"],
+                    _external=True,
+                )
+                rv["artifacts"].append({"url": u, "size_bytes": a["size_bytes"]})
+            else:
+                rv["artifacts"].append("%s/%s" % (run.name, a["name"]))
     return rv
 
 
