@@ -10,6 +10,9 @@ RUN mkdir -p $APPDIR
 COPY ./requirements.txt /srv/jobserv/
 
 RUN apk --no-cache add python3 py3-pip mysql-client python3-dev musl-dev g++ openssl libffi-dev openssl-dev rust cargo linux-headers && \
+	# This is a temp hack due to: https://github.com/yaml/pyyaml/issues/601
+	pip3 install 'wheel==0.40.0' && \
+	pip3 install --no-build-isolation 'cython<3.0.0' 'PyYAML==5.4.1' && \
 	pip3 install --upgrade pip setuptools && \
 	pip3 install -r $APPDIR/requirements.txt && \
 	apk del python3-dev musl-dev g++ libffi-dev openssl-dev rust cargo linux-headers
