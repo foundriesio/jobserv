@@ -101,6 +101,11 @@ def trigger_build(
     project, reason, trigger_name, params, secrets, proj_def, queue_priority=0
 ):
     proj_def = ProjectDefinition.validate_data(proj_def)
+    trigger = proj_def.get_trigger(trigger_name)
+    if not trigger:
+        raise KeyError(
+            "Project(%s) does not have a trigger: %s" % (project, trigger_name)
+        )
     b = Build.create(project)
     try:
         if reason:
@@ -111,11 +116,6 @@ def trigger_build(
         storage.create_project_definition(
             b, yaml.dump(proj_def._data, default_flow_style=False)
         )
-        trigger = proj_def.get_trigger(trigger_name)
-        if not trigger:
-            raise KeyError(
-                "Project(%s) does not have a trigger: %s" % (project, trigger_name)
-            )
         if trigger.get("triggers"):
             # there's a trigger to run after all the runs for this trigger
             # completed. it will need to know the parameters for this job

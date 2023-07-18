@@ -7,7 +7,7 @@ from jobserv.flask import permissions
 from jobserv.settings import BUILD_URL_FMT
 from jobserv.storage import Storage
 from jobserv.jsend import ApiError, get_or_404, jsendify, paginate, paginate_custom
-from jobserv.models import Build, BuildStatus, Project, TriggerTypes, db
+from jobserv.models import Build, BuildStatus, Project, Run, TriggerTypes, db
 from jobserv.trigger import trigger_build
 
 blueprint = Blueprint("api_build", __name__, url_prefix="/projects/<project:proj>")
@@ -206,5 +206,11 @@ def external_build_create(proj):
     b = Build.create(p, init_event_status=BuildStatus.PASSED)
     b.status = BuildStatus.PASSED
     b.trigger_name = d.get("trigger-name")
+
+    for run in d.get("runs") or []:
+        r = Run(b, run["name"])
+        r.status = BuildStatus.PASSED
+        db.session.add(r)
+
     db.session.commit()
     return jsendify({"build_id": b.build_id}, 201)

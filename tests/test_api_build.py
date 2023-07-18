@@ -332,3 +332,23 @@ class BuildAPITest(JobServTest):
         self.assertIsNotNone(b.get("completed"))
         self.assertEqual(b["created"], b["completed"])
         self.assertEqual(b["trigger_name"], input_data["trigger-name"])
+
+        # test a build with runs
+        headers = {"Content-type": "application/json"}
+        input_data = {
+            "trigger-name": "myapp-github-workflow-ci",
+            "runs": [{"name": "intel-corei7-64"}],
+        }
+        urlbase = "/projects/%s/external-builds/" % self.project.name
+        _sign("http://localhost/projects/proj-1/external-builds/", headers, "POST")
+        resp = self._post(urlbase, json.dumps(input_data), headers, 201)
+        resp_data = json.loads(resp.data.decode())
+        self.assertEqual(resp_data["status"], "success")
+        self.assertEqual(resp_data["data"]["build_id"], 2)
+        data = self.get_json(self.urlbase + "2/")
+        self.assertIsNotNone(data.get("build"))
+        b = data["build"]
+        self.assertEqual(1, len(b["runs"]))
+        self.assertEqual("intel-corei7-64", b["runs"][0]["name"])
+        self.assertEqual("PASSED", b["runs"][0]["status"])
+        self.assertEqual("PASSED", b["status"])
