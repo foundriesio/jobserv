@@ -1,6 +1,6 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
-
+import logging
 from flask import Blueprint, request, url_for
 
 from jobserv.flask import permissions
@@ -218,11 +218,21 @@ def external_build_create(proj):
     b = Build.create(p, init_event_status=BuildStatus.PASSED)
     b.status = BuildStatus.PASSED
     b.trigger_name = d.get("trigger-name")
+    b.project = p  # needed because its not committed when we do `create_artifacts_link`
 
+    s = Storage()
     for run in d.get("runs") or []:
         r = Run(b, run["name"])
         r.status = BuildStatus.PASSED
         db.session.add(r)
 
+        links = run.get("artifact-links")
+        if Storage.LINK_FILE and links:
+            # needed because its not committed when we do `create_artifacts_link`
+            r.build = b
+            s.create_artifacts_link(r, {"links": links})
+        elif links:
+            logging.warning("storage backend does not support links")
     db.session.commit()
+
     return jsendify({"build_id": b.build_id}, 201)

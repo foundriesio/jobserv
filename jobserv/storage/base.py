@@ -16,6 +16,7 @@ log = logging.getLogger("jobserv.flask")
 
 
 class BaseStorage(object):
+    LINK_FILE = None
     blueprint = None
 
     def __init__(self):
@@ -52,6 +53,12 @@ class BaseStorage(object):
                 path = path[1:]
             return name + path
         return name
+
+    def create_artifacts_link(self, run, links):
+        if not self.LINK_FILE:
+            raise RuntimeError("Storage engine does not support link files")
+        path = self._get_run_path(run, self.LINK_FILE)
+        self._create_from_string(path, json.dumps(links))
 
     def create_project_definition(self, build, projdef):
         name = "%s/%s/project.yml" % (build.project.name, build.build_id)

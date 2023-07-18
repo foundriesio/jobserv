@@ -320,7 +320,8 @@ class BuildAPITest(JobServTest):
 
         self.assertEqual(expected, [x.status for x in b.runs])
 
-    def test_external_build_post(self):
+    @patch("jobserv.api.build.Storage")
+    def test_external_build_post(self, storage):
         headers = {"Content-type": "application/json"}
         input_data = {
             "trigger-name": "myapp-github-workflow-ci",
