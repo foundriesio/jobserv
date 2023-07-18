@@ -250,6 +250,18 @@ class BuildAPITest(JobServTest):
         build = self.get_json(url)["build"]
         self.assertEqual("foo bar", build["annotation"])
 
+        # test v2 listing of artifacts
+        storage().list_artifacts.return_value = [
+            {"name": "console.log", "size_bytes": 10}
+        ]
+        url = "/projects/%s/promoted-builds/release-X/?version=v2" % self.project.name
+        build = self.get_json(url)["build"]
+        expected = {
+            "url": "http://localhost/projects/proj-1/builds/1/runs/run0/console.log",
+            "size_bytes": 10,
+        }
+        self.assertEqual(expected, build["artifacts"][0])
+
     def test_promote_post(self):
         b = Build.create(self.project)
         db.session.add(Run(b, "run0"))
@@ -308,7 +320,8 @@ class BuildAPITest(JobServTest):
 
         self.assertEqual(expected, [x.status for x in b.runs])
 
-    def test_external_build_post(self):
+    @patch("jobserv.api.build.Storage")
+    def test_external_build_post(self, storage):
         headers = {"Content-type": "application/json"}
         input_data = {
             "trigger-name": "myapp-github-workflow-ci",

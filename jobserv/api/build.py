@@ -1,6 +1,6 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
-
+import logging
 from flask import Blueprint, request, url_for
 
 from jobserv.flask import permissions
@@ -162,13 +162,25 @@ def _promoted_as_json(storage, build):
     rv = build.as_json(detailed=True)
     rv["tests"] = []
     rv["artifacts"] = []
+    v2 = request.args.get("version") == "v2"
     for run in build.runs:
         for t in run.tests:
             test = t.as_json(detailed=True)
             test["name"] = "%s-%s" % (run.name, test["name"])
             rv["tests"].append(test)
         for a in storage.list_artifacts(run):
-            rv["artifacts"].append("%s/%s" % (run.name, a["name"]))
+            if v2:
+                u = url_for(
+                    "api_run.run_get_artifact",
+                    proj=build.project.name,
+                    build_id=build.build_id,
+                    run=run.name,
+                    path=a["name"],
+                    _external=True,
+                )
+                rv["artifacts"].append({"url": u, "size_bytes": a["size_bytes"]})
+            else:
+                rv["artifacts"].append("%s/%s" % (run.name, a["name"]))
     return rv
 
 
@@ -206,11 +218,21 @@ def external_build_create(proj):
     b = Build.create(p, init_event_status=BuildStatus.PASSED)
     b.status = BuildStatus.PASSED
     b.trigger_name = d.get("trigger-name")
+    b.project = p  # needed because its not committed when we do `create_artifacts_link`
 
+    s = Storage()
     for run in d.get("runs") or []:
         r = Run(b, run["name"])
         r.status = BuildStatus.PASSED
         db.session.add(r)
 
+        links = run.get("artifact-links")
+        if Storage.LINK_FILE and links:
+            # needed because its not committed when we do `create_artifacts_link`
+            r.build = b
+            s.create_artifacts_link(r, {"links": links})
+        elif links:
+            logging.warning("storage backend does not support links")
     db.session.commit()
+
     return jsendify({"build_id": b.build_id}, 201)
