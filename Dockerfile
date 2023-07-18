@@ -1,4 +1,4 @@
-FROM alpine
+FROM alpine:3.18
 
 ENV APPDIR=/srv/jobserv
 ENV PYTHONPATH=$APPDIR
