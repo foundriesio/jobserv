@@ -54,6 +54,7 @@ class GitPoller(SimpleHandler):
         # be for the script-repo cloning. So we probe and hope for the best:
         env = self.rundef["env"]
         user = env.get("gitlabuser") or secrets.get("gitlabuser")
+        server = env.get("gitlabserver") or secrets.get("gitlabserver")
         if user:
             token = self.rundef["secrets"]["gitlabtok"]
             url = clone_url
@@ -65,7 +66,7 @@ class GitPoller(SimpleHandler):
             tok = b64(user + ":" + token)
             r = requests.get(url, headers={"Authorization": "Basic " + tok})
             if r.ok:
-                log.info("Adding gitlabtok to .gitconfig")
+                log.info(f"Adding gitlabtok to .gitconfig for {clone_url}")
                 fd.write('[http "%s"]\n' % clone_url)
                 fd.write("  extraheader = Authorization: Basic %s\n" % tok)
 
@@ -73,6 +74,16 @@ class GitPoller(SimpleHandler):
                 host = urlparse(clone_url).netloc
                 fd.write(f'[url "https://{user}:{token}@{host}/"]\n')
                 fd.write(f'  insteadOf = "git@{host}:"\n')
+            if server:
+                log.info("Adding gitlabtok to .gitconfig for %s", server)
+                fd.write(f'[http "{server}"]\n')
+                fd.write("  extraheader = Authorization: Basic %s\n" % tok)
+
+                host = urlparse(server).netloc
+                fd.write(f'[url "https://{user}:{token}@{host}/"]\n')
+                fd.write(f'  insteadOf = "git@{host}:"\n')
+
+
 
     def _create_bitbucket_content(self, log, fd, secrets, clone_url):
         tok = secrets.get("bitbuckettok")
