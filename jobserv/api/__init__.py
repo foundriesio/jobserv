@@ -51,6 +51,13 @@ def register_blueprints(app):
             )
             return jsendify(data, 400)
 
+        @bp.errorhandler(FileNotFoundError)
+        def notfound_error(e):
+            data = {
+                "message": "Not found",
+            }
+            return jsendify(data, 404)
+
         @bp.errorhandler(Exception)
         def unexpected_error(e):
             data = {
