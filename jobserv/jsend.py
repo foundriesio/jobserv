@@ -16,7 +16,7 @@ def _status_str(status_code):
 def jsendify(data, status_code=200):
     # https://labs.omniti.com/labs/jsend
     rv = {"status": _status_str(status_code)}
-    if type(data) == str:
+    if isinstance(data, str):
         rv["message"] = data
     else:
         rv["data"] = data

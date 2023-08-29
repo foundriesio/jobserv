@@ -178,11 +178,11 @@ class ProjectTrigger(db.Model):
             return self._secret_data
 
     def update_secrets(self):
-        assert type(self._secret_data) == dict
+        assert isinstance(self._secret_data, dict)
         for k, v in self._secret_data.items():
-            if type(k) != str:
+            if not isinstance(k, str):
                 raise ValueError("Invalid secret name: %r" % k)
-            if type(v) != str:
+            if not isinstance(v, str):
                 raise ValueError("Invalid secret value(%s): %r" % (k, v))
         self._init_fernet()
         self.secrets = self.fernet.encrypt(
@@ -780,7 +780,7 @@ class Worker(db.Model):
         self.enlisted = False
 
     def validate_api_key(self, key):
-        if type(self.api_key) == bytes:
+        if isinstance(self.api_key, bytes):
             return bcrypt.checkpw(key.encode(), self.api_key)
         return bcrypt.checkpw(key.encode(), self.api_key.encode())
 
