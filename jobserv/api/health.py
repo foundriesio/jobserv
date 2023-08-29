@@ -5,15 +5,10 @@ from flask import Blueprint, url_for
 
 from sqlalchemy import func
 
-from jobserv.jsend import ApiError, jsendify
+from jobserv.jsend import jsendify
 from jobserv.models import BuildStatus, Run, db
 
 blueprint = Blueprint("api_health", __name__, url_prefix="/health")
-
-
-@blueprint.errorhandler(ApiError)
-def api_error(e):
-    return e.resp
 
 
 @blueprint.route("/runs/")

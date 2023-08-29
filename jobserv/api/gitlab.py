@@ -19,11 +19,6 @@ from jobserv.trigger import trigger_build
 blueprint = Blueprint("api_gitlab", __name__, url_prefix="/gitlab")
 
 
-@blueprint.errorhandler(ApiError)
-def api_error(e):
-    return e.resp
-
-
 def _get_params(data):
     if data["object_kind"] == "note":
         mr = data["merge_request"]
