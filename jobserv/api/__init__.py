@@ -44,9 +44,7 @@ def register_blueprints(app):
             "error_msg": str(e),
             "stack_trace": traceback.format_exc(),
         }
-        current_app.logger.exception(
-            "Unexpected DB error caught in BP error handler"
-        )
+        current_app.logger.exception("Unexpected DB error caught in BP error handler")
         return jsendify(data, 400)
 
     @app.errorhandler(FileNotFoundError)

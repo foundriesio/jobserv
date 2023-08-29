@@ -567,7 +567,7 @@ class Run(db.Model, StatusMixin):
         okay_sync_builds = {}
         rows = cursor.fetchall()
         oldest_builds = {}
-        for (run_id, build_id, status, proj_id, sync, tag) in rows:
+        for run_id, build_id, status, proj_id, sync, tag in rows:
             oldest_builds.setdefault(proj_id, build_id)
             if status in (2, 6) and sync:
                 sync_projects[proj_id] = True

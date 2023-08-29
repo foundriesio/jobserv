@@ -83,8 +83,6 @@ class GitPoller(SimpleHandler):
                 fd.write(f'[url "https://{user}:{token}@{host}/"]\n')
                 fd.write(f'  insteadOf = "git@{host}:"\n')
 
-
-
     def _create_bitbucket_content(self, log, fd, secrets, clone_url):
         tok = secrets.get("bitbuckettok")
         if not tok:
