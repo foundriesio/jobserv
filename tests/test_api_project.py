@@ -42,7 +42,10 @@ class ProjectAPITest(JobServTest):
         self.assertEqual(404, r.status_code)
 
     def test_project_create_denied(self):
-        r = self.client.post("/projects/", data=json.dumps({"name": "foo"}))
+        headers = {"Content-type": "application/json"}
+        r = self.client.post(
+            "/projects/", headers=headers, data=json.dumps({"name": "foo"})
+        )
         self.assertEqual(401, r.status_code)
 
     def test_project_create(self):

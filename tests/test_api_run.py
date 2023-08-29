@@ -192,15 +192,18 @@ class RunAPITest(JobServTest):
         db.session.refresh(r)
         self.assertEqual("foobar-meta", r.meta)
 
-    @patch("jobserv.storage.gce_storage.storage")
+    @patch("jobserv.api.run.Storage")
     def test_upload(self, storage):
         r = Run(self.build, "run0")
         r.status = BuildStatus.RUNNING
         db.session.add(r)
         db.session.commit()
 
-        headers = [("Authorization", "Token %s" % r.api_key)]
-        storage.generate_signed.return_value = {
+        headers = [
+            ("Authorization", "Token %s" % r.api_key),
+            ("Content-type", "application/json"),
+        ]
+        storage().generate_signed.return_value = {
             "foo": "bar",
             "blah": "bam",
         }
