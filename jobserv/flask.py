@@ -11,7 +11,7 @@ from flask_migrate import Migrate
 
 import json_logging
 from werkzeug.middleware.proxy_fix import ProxyFix
-from werkzeug.routing import UnicodeConverter
+from werkzeug.routing import PathConverter
 
 from jobserv.settings import PROJECT_NAME_REGEX
 
@@ -36,11 +36,8 @@ class ISO8601_JSONProvider(JSONProvider):
         return loads(s, **kwargs)
 
 
-class ProjectConverter(UnicodeConverter):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, *kwargs)
-        if PROJECT_NAME_REGEX:
-            self.regex = PROJECT_NAME_REGEX
+class ProjectConverter(PathConverter):
+    regex = PROJECT_NAME_REGEX or PathConverter.regex
 
 
 class RequestIdMiddleware(ProxyFix):
