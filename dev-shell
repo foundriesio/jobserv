@@ -1,0 +1,21 @@
+#!/bin/sh -ex
+
+cd $(dirname $(readlink -f $0))
+
+if [ -n "$INDOCKER" ] ; then
+	apk add bash git
+	git config --system user.name "Gavin Gavel"
+	git config --system user.email "bot@foundries.io"
+	git config --system protocol.file.allow always
+
+	pip3 install black
+	exec /bin/bash
+fi
+
+docker build -t jobserv ./
+
+docker run --rm -it \
+	-v `pwd`:`pwd` \
+	-w `pwd` \
+	-e INDOCKER=1 \
+	jobserv ./dev-shell

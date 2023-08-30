@@ -18,11 +18,7 @@ if [ -z $SQLALCHEMY_DATABASE_URI ] ; then
 	export SQLALCHEMY_DATABASE_URI='sqlite://'
 fi
 
-# This is a temp hack due to: https://github.com/yaml/pyyaml/issues/601
-# and you have to do it globally *and* in the venv below to make it work
-pip3 install --no-build-isolation 'cython<3.0.0' 'PyYAML==5.4.1'
 python3 -m venv $VENV
-$VENV/bin/pip3 install --no-build-isolation 'cython<3.0.0' 'PyYAML==5.4.1'
 $VENV/bin/pip3 install -U pip
 $VENV/bin/pip3 install -U setuptools
 $VENV/bin/pip3 install -r requirements.txt

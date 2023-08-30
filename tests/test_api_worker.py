@@ -459,8 +459,8 @@ class WorkerAPITest(JobServTest):
         )
 
     def test_worker_create_bad(self):
-        data = {}
-        r = self.client.post("/workers/w1/", data=data)
+        headers = [("Content-type", "application/json")]
+        r = self.client.post("/workers/w1/", headers=headers, data="{}")
         self.assertEqual(400, r.status_code)
         self.assertIn("Missing required field(s): api_key,", r.data.decode())
 

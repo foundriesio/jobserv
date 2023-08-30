@@ -33,41 +33,38 @@ BLUEPRINTS = (
 
 
 def register_blueprints(app):
+    @app.errorhandler(ApiError)
+    def api_error(e):
+        return e.resp
+
+    @app.errorhandler(DataError)
+    def data_error(e):
+        data = {
+            "message": "An unexpected error occurred inserting data",
+            "error_msg": str(e),
+            "stack_trace": traceback.format_exc(),
+        }
+        current_app.logger.exception("Unexpected DB error caught in BP error handler")
+        return jsendify(data, 400)
+
+    @app.errorhandler(FileNotFoundError)
+    def notfound_error(e):
+        data = {
+            "message": "Not found",
+        }
+        return jsendify(data, 404)
+
+    @app.errorhandler(Exception)
+    def unexpected_error(e):
+        data = {
+            "message": "An unexpected error occurred",
+            "error_msg": str(e),
+            "stack_trace": traceback.format_exc(),
+        }
+        current_app.logger.exception("Unexpected error caught in BP error handler")
+        return jsendify(data, 500)
+
     for bp in BLUEPRINTS:
-
-        @bp.errorhandler(ApiError)
-        def api_error(e):
-            return e.resp
-
-        @bp.errorhandler(DataError)
-        def data_error(e):
-            data = {
-                "message": "An unexpected error occurred inserting data",
-                "error_msg": str(e),
-                "stack_trace": traceback.format_exc(),
-            }
-            current_app.logger.exception(
-                "Unexpected DB error caught in BP error handler"
-            )
-            return jsendify(data, 400)
-
-        @bp.errorhandler(FileNotFoundError)
-        def notfound_error(e):
-            data = {
-                "message": "Not found",
-            }
-            return jsendify(data, 404)
-
-        @bp.errorhandler(Exception)
-        def unexpected_error(e):
-            data = {
-                "message": "An unexpected error occurred",
-                "error_msg": str(e),
-                "stack_trace": traceback.format_exc(),
-            }
-            current_app.logger.exception("Unexpected error caught in BP error handler")
-            return jsendify(data, 500)
-
         app.register_blueprint(bp)
 
     @app.route("/healthz")

@@ -2,11 +2,11 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import datetime
-
 from importlib import import_module
+from json import JSONEncoder, dumps, loads
 
 from flask import Flask, request
-from flask.json import JSONEncoder
+from flask.json.provider import JSONProvider
 from flask_migrate import Migrate
 
 import json_logging
@@ -26,6 +26,14 @@ class ISO8601_JSONEncoder(JSONEncoder):
         if isinstance(obj, datetime.datetime):
             return obj.isoformat() + "+00:00"
         return super().default(obj)
+
+
+class ISO8601_JSONProvider(JSONProvider):
+    def dumps(self, obj, **kwargs):
+        return dumps(obj, **kwargs, cls=ISO8601_JSONEncoder)
+
+    def loads(self, s: str | bytes, **kwargs):
+        return loads(s, **kwargs)
 
 
 class ProjectConverter(UnicodeConverter):
@@ -68,6 +76,7 @@ def _handle_404(e):
 
 def create_app(settings_object="jobserv.settings"):
     app = Flask(__name__)
+    app.json = ISO8601_JSONProvider(app)
     app.wsgi_app = RequestIdMiddleware(app.wsgi_app)
     app.config.from_object(settings_object)
 
@@ -96,7 +105,6 @@ def create_app(settings_object="jobserv.settings"):
     if Storage.blueprint:
         app.register_blueprint(Storage.blueprint)
 
-    app.json_encoder = ISO8601_JSONEncoder
     app.before_request(_user_has_permission)
     app.register_error_handler(404, _handle_404)
     return app
