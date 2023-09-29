@@ -42,6 +42,8 @@ def _check_worker(w):
             w.online = False
             with StatsClient() as c:
                 c.worker_offline(w)
+            os.unlink(pings_log)
+            return
 
         # based on rough calculations a 1M file is about 9000 entries which is
         # about 2 days worth of information
