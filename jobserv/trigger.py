@@ -98,7 +98,14 @@ def _fail_unexpected(build, exception):
 
 
 def trigger_build(
-    project, reason, trigger_name, params, secrets, proj_def, queue_priority=0
+    project,
+    reason,
+    trigger_name,
+    params,
+    secrets,
+    proj_def,
+    queue_priority=0,
+    async_commit=False,
 ):
     proj_def = ProjectDefinition.validate_data(proj_def)
     trigger = proj_def.get_trigger(trigger_name)
@@ -123,6 +130,14 @@ def trigger_build(
     except Exception as e:
         raise _fail_unexpected(b, e)
 
-    trigger_runs(storage, proj_def, b, trigger, params, secrets, None, queue_priority)
-    db.session.commit()
+    def commit_runs(b: Build):
+        trigger_runs(
+            storage, proj_def, b, trigger, params, secrets, None, queue_priority
+        )
+        db.session.commit()
+
+    if async_commit:
+        return b, commit_runs
+
+    commit_runs(b)
     return b

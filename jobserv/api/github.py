@@ -4,6 +4,7 @@
 import hmac
 import logging
 import secrets
+from threading import Thread
 import time
 import traceback
 import yaml
@@ -16,7 +17,7 @@ from flask import Blueprint, request, url_for
 
 from jobserv.flask import permissions
 from jobserv.jsend import ApiError, get_or_404, jsendify
-from jobserv.models import Project, ProjectTrigger, TriggerTypes, db
+from jobserv.models import Build, Project, ProjectTrigger, TriggerTypes, db
 from jobserv.settings import GITLAB_SERVERS, RUN_URL_FMT
 from jobserv.trigger import trigger_build
 
@@ -207,6 +208,21 @@ def _assert_ok_to_test(repo, labels):
     raise ApiError(200, "Ingoring event: ok-to-test label not set")
 
 
+def threaded_commit(url, repo, pr_num, params, token, build_id, commit_func):
+    from jobserv.app import app
+
+    parts = urlparse(url)
+    base = f"{parts.scheme}://{parts.hostname}"
+    with app.app_context(), app.test_request_context("/", base):
+        try:
+            b = Build.query.get(build_id)
+            commit_func(b)
+            _update_pr(b, params["GH_STATUS_URL"], token)
+        except ApiError as e:
+            url = e.resp.headers.get("Location")
+            _fail_pr(repo, pr_num, params["GIT_SHA"], url, token)
+
+
 @blueprint.route("/<project:proj>/", methods=("POST",))
 def on_webhook(proj):
     trigger = _find_trigger(proj)
@@ -241,10 +257,21 @@ def on_webhook(proj):
     params = _get_params(owner, repo, pr_num, token)
     try:
         trig, proj = _get_proj_def(trigger, owner, repo, params["GIT_SHA"], token)
-        b = trigger_build(
-            trigger.project, reason, trig, params, secrets, proj, trigger.queue_priority
+        b, commit = trigger_build(
+            trigger.project,
+            reason,
+            trig,
+            params,
+            secrets,
+            proj,
+            trigger.queue_priority,
+            async_commit=True,
         )
-        _update_pr(b, params["GH_STATUS_URL"], token)
+        t = Thread(
+            target=threaded_commit,
+            args=(request.url, repo, pr_num, params, token, b.id, commit),
+        )
+        t.start()
         url = url_for(
             "api_build.build_get",
             proj=trigger.project.name,
