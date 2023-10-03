@@ -223,8 +223,11 @@ def run_monitor_workers():
     log.info("worker monitor has started")
     try:
         while True:
-            log.debug("checking workers")
-            _check_workers()
+            if os.path.isdir(WORKER_DIR):
+                log.debug("checking workers")
+                _check_workers()
+            else:
+                log.info("Skipping check for surges. WORKER_DIR does not exist")
             log.debug("checking queue")
             _check_queue()
             log.debug("checking stuck jobs")
