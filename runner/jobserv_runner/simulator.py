@@ -15,7 +15,7 @@ def main(args):
     m.handler.execute(args.worker_dir, args.runner_dir, args.rundef)
 
 
-def _update_shared_volumes_mapping(volumes, rundef):
+def _update_shared_volumes_mapping(worker_dir, volumes, rundef):
     """Convert rundef mappings:
       name1: /path/in/container1
       name2: /path/in/container2
@@ -36,7 +36,12 @@ def _update_shared_volumes_mapping(volumes, rundef):
                 host_path = volumes[name]
                 mapping[host_path] = container_path
             except KeyError:
-                sys.exit(f"Please specify a shared volume path for: {name}")
+                volpath = os.path.join(worker_dir, "shared-volumes", name)
+                print(f"Shared volume not specified for: {name}. Default to: {volpath}")
+                try:
+                    os.makedirs(volpath)
+                except FileExistsError:
+                    pass
         rundef["shared-volumes"] = mapping
 
 
@@ -65,7 +70,7 @@ def get_args(args=None):
 
     args.rundef = json.load(args.rundef)
     args.rundef["simulator"] = True
-    _update_shared_volumes_mapping(vols, args.rundef)
+    _update_shared_volumes_mapping(args.worker_dir, vols, args.rundef)
 
     if not os.path.isdir(args.worker_dir):
         sys.exit("worker-dir does not exist: " + args.worker_dir)
