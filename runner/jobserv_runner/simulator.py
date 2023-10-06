@@ -94,6 +94,10 @@ def get_args(args=None):
     _update_shared_volumes_mapping(args.worker_dir, vols, args.rundef)
     _handle_inputs(rundef_path, args.rundef)
 
+    for name, val in (args.rundef.get("secrets") or {}).items():
+        if val == "TODO":
+            sys.exit(f"Missing required secret value in run definition: {name}")
+
     if not os.path.isdir(args.worker_dir):
         sys.exit("worker-dir does not exist: " + args.worker_dir)
     args.runner_dir = os.path.join(args.worker_dir, "run")
