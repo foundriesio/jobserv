@@ -2,6 +2,7 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import argparse
+from base64 import b64encode
 import importlib
 import json
 import os
@@ -45,6 +46,25 @@ def _update_shared_volumes_mapping(worker_dir, volumes, rundef):
         rundef["shared-volumes"] = mapping
 
 
+def _handle_inputs(rundef_path, rundef):
+    inputs = rundef.get("simulator-inputs")
+    if not inputs:
+        return
+    for item in inputs:
+        value = input(item["prompt"])
+        for name, handler in item["secrets"].items():
+            transform = handler.get("transform")
+            if transform and transform == "BasicAuth":
+                encoded = b64encode(value.encode()).decode()
+                value = f"Authorization: basic {encoded}"
+            elif transform:
+                sys.exit(f"unknown secret transform for {item}")
+            rundef["secrets"][name] = value
+    del rundef["simulator-inputs"]
+    with open(rundef_path, "w") as f:
+        json.dump(rundef, f, indent=2)
+
+
 def get_args(args=None):
     parser = argparse.ArgumentParser(description="Execute a JobServ run definition")
     parser.add_argument("-w", "--worker-dir", help="Location to store the run")
@@ -68,9 +88,11 @@ def get_args(args=None):
             sys.exit(f"Invalid shared-volume: {k}. {v} does not exist")
         vols[k] = v
 
+    rundef_path = args.rundef.name
     args.rundef = json.load(args.rundef)
     args.rundef["simulator"] = True
     _update_shared_volumes_mapping(args.worker_dir, vols, args.rundef)
+    _handle_inputs(rundef_path, args.rundef)
 
     if not os.path.isdir(args.worker_dir):
         sys.exit("worker-dir does not exist: " + args.worker_dir)
