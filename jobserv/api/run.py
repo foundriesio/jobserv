@@ -344,10 +344,6 @@ def run_get_simulate_sh(proj, build_id, run):
     rundef_str = rundef_str.replace("$", "\\$")
     rundef_str = rundef_str.replace("\\", "\\\\")
 
-    volumes = ""
-    for vol in (rundef.get("shared-volumes") or {}).keys():
-        volumes += " -v " + vol + "=<TODO>"
-
     script = """#!/bin/sh -e
 
 SIMDIR="${{SIMDIR-/tmp/sim-run}}"
@@ -360,9 +356,9 @@ cat >rundef.json <<EIEIO
 EIEIO
 
 wget -O runner {runner}
-PYTHONPATH=./runner python3 -m jobserv_runner.simulator -w `pwd` {volumes} rundef.json
+PYTHONPATH=./runner python3 -m jobserv_runner.simulator -w `pwd` rundef.json
     """.format(
-        rundef=rundef_str, volumes=volumes, runner=runner
+        rundef=rundef_str, runner=runner
     )
     return script, 200, {"Content-Type": "text/plain"}
 

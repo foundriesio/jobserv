@@ -2,6 +2,7 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import argparse
+from base64 import b64encode
 import importlib
 import json
 import os
@@ -15,7 +16,7 @@ def main(args):
     m.handler.execute(args.worker_dir, args.runner_dir, args.rundef)
 
 
-def _update_shared_volumes_mapping(volumes, rundef):
+def _update_shared_volumes_mapping(worker_dir, volumes, rundef):
     """Convert rundef mappings:
       name1: /path/in/container1
       name2: /path/in/container2
@@ -36,8 +37,32 @@ def _update_shared_volumes_mapping(volumes, rundef):
                 host_path = volumes[name]
                 mapping[host_path] = container_path
             except KeyError:
-                sys.exit(f"Please specify a shared volume path for: {name}")
+                volpath = os.path.join(worker_dir, "shared-volumes", name)
+                print(f"Shared volume not specified for: {name}. Default to: {volpath}")
+                try:
+                    os.makedirs(volpath)
+                except FileExistsError:
+                    pass
         rundef["shared-volumes"] = mapping
+
+
+def _handle_inputs(rundef_path, rundef):
+    inputs = rundef.get("simulator-inputs")
+    if not inputs:
+        return
+    for item in inputs:
+        value = input(item["prompt"])
+        for name, handler in item["secrets"].items():
+            transform = handler.get("transform")
+            if transform and transform == "BasicAuth":
+                encoded = b64encode(value.encode()).decode()
+                value = f"Authorization: basic {encoded}"
+            elif transform:
+                sys.exit(f"unknown secret transform for {item}")
+            rundef["secrets"][name] = value
+    del rundef["simulator-inputs"]
+    with open(rundef_path, "w") as f:
+        json.dump(rundef, f, indent=2)
 
 
 def get_args(args=None):
@@ -63,9 +88,15 @@ def get_args(args=None):
             sys.exit(f"Invalid shared-volume: {k}. {v} does not exist")
         vols[k] = v
 
+    rundef_path = args.rundef.name
     args.rundef = json.load(args.rundef)
     args.rundef["simulator"] = True
-    _update_shared_volumes_mapping(vols, args.rundef)
+    _update_shared_volumes_mapping(args.worker_dir, vols, args.rundef)
+    _handle_inputs(rundef_path, args.rundef)
+
+    for name, val in (args.rundef.get("secrets") or {}).items():
+        if val == "TODO":
+            sys.exit(f"Missing required secret value in run definition: {name}")
 
     if not os.path.isdir(args.worker_dir):
         sys.exit("worker-dir does not exist: " + args.worker_dir)
