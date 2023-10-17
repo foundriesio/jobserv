@@ -115,10 +115,12 @@ def trigger_build(
         )
     b = Build.create(project)
     try:
-        if reason:
-            b.reason = reason
-        if trigger_name:
-            b.trigger_name = trigger_name
+        if reason or trigger_name:
+            if reason:
+                b.reason = reason
+            if trigger_name:
+                b.trigger_name = trigger_name
+            db.session.commit()
         storage = Storage()
         storage.create_project_definition(
             b, yaml.dump(proj_def._data, default_flow_style=False)
