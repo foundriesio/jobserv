@@ -180,10 +180,14 @@ def _update_run(run, status, message):
 
 
 def _check_stuck():
-    cut_off = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
+    running_cut_off = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
+    cancelling_cut_off = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
     for r in Run.query.filter(
         Run.status.in_((BuildStatus.RUNNING, BuildStatus.CANCELLING))
     ):
+        cut_off = running_cut_off
+        if r.status == BuildStatus.CANCELLING:
+            cut_off = cancelling_cut_off
         if len(r.status_events) > 0 and r.status_events[-1].time < cut_off:
             period = cut_off - r.status_events[-1].time
             log.error(
