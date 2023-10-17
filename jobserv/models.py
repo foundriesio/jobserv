@@ -838,8 +838,10 @@ class Worker(db.Model):
             with StatsClient() as c:
                 c.worker_online(self)
         path = self.pings_log
-        if not os.path.exists(path):
+        try:
             os.makedirs(os.path.dirname(path))
+        except FileExistsError:
+            pass
         now = time.time()
         vals = ",".join(["%s=%s" % (k, v) for k, v in kwargs.items()])
         with open(path, "a") as f:
