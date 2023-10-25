@@ -222,22 +222,22 @@ def _check_cancelled():
         m = "\n" + "=" * 72 + "\n" + "CANCELLED\n"
         _update_run(run, status=BuildStatus.FAILED.name, message=m)
 
-
 def run_monitor_workers():
     log.info("worker monitor has started")
     try:
         while True:
-            if os.path.isdir(WORKER_DIR):
+            if not os.path.exists(WORKER_DIR):
+                log.info("Skipping check for surges. WORKER_DIR does not exist")
+            else:
                 log.debug("checking workers")
                 _check_workers()
-            else:
-                log.info("Skipping check for surges. WORKER_DIR does not exist")
-            log.debug("checking queue")
-            _check_queue()
-            log.debug("checking stuck jobs")
-            _check_stuck()
-            log.debug("checking cancelled jobs")
-            _check_cancelled()
+                log.debug("checking queue")
+                _check_queue()
+                log.debug("checking stuck jobs")
+                _check_stuck()
+                log.debug("checking cancelled jobs")
+                _check_cancelled()
             time.sleep(120)  # run every 2 minutes
     except Exception:
         log.exception("unexpected error in run_monitor_workers")
+
