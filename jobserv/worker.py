@@ -222,6 +222,7 @@ def _check_cancelled():
         m = "\n" + "=" * 72 + "\n" + "CANCELLED\n"
         _update_run(run, status=BuildStatus.FAILED.name, message=m)
 
+
 def run_monitor_workers():
     log.info("worker monitor has started")
     try:
@@ -240,4 +241,3 @@ def run_monitor_workers():
             time.sleep(120)  # run every 2 minutes
     except Exception:
         log.exception("unexpected error in run_monitor_workers")
-
