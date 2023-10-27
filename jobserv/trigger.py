@@ -113,14 +113,8 @@ def trigger_build(
         raise KeyError(
             "Project(%s) does not have a trigger: %s" % (project, trigger_name)
         )
-    b = Build.create(project)
+    b = Build.create(project, reason=reason, trigger_name=trigger_name)
     try:
-        if reason or trigger_name:
-            if reason:
-                b.reason = reason
-            if trigger_name:
-                b.trigger_name = trigger_name
-            db.session.commit()
         storage = Storage()
         storage.create_project_definition(
             b, yaml.dump(proj_def._data, default_flow_style=False)

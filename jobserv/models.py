@@ -288,10 +288,14 @@ class Build(db.Model, StatusMixin):
 
     __table_args__ = (db.UniqueConstraint("proj_id", "build_id", name="build_id_uc"),)
 
-    def __init__(self, project, build_id):
+    def __init__(self, project, build_id, reason="", trigger_name=""):
         self.proj_id = project.id
         self.build_id = build_id
         self.status = BuildStatus.QUEUED
+        if reason:
+            self.reason = reason
+        if trigger_name:
+            self.trigger_name = trigger_name
 
     def as_json(self, detailed=False):
         url = url_for(
@@ -355,11 +359,13 @@ class Build(db.Model, StatusMixin):
             yield build_id
 
     @classmethod
-    def create(clazz, project, init_event_status=BuildStatus.QUEUED):
+    def create(
+        clazz, project, init_event_status=BuildStatus.QUEUED, reason="", trigger_name=""
+    ):
         last_exc = None
         for build_id in clazz._try_build_ids(project):
             try:
-                b = Build(project, build_id)
+                b = Build(project, build_id, reason, trigger_name)
                 db.session.add(b)
                 db.session.flush()
                 db.session.add(BuildEvents(b, init_event_status))
