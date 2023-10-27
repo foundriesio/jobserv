@@ -49,7 +49,7 @@ def _host_from_jwt(jwt):
     _, payload, _ = jwt.split(".")
     content = b64decode(payload.encode() + b"==")
     data = json.loads(content)
-    return data["name"]
+    return data["name"], data.get("exp")
 
 
 def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges, jwt):
@@ -66,8 +66,10 @@ def _create_conf(server_url, hostname, concurrent_runs, host_tags, surges, jwt):
     config["jobserv"]["host_tags"] = host_tags
     config["jobserv"]["surges_only"] = str(int(surges))
     if jwt:
-        hostname = _host_from_jwt(jwt)
+        hostname, exp = _host_from_jwt(jwt)
         config["jobserv"]["jwt"] = jwt
+        if exp:
+            config["jobserv"]["jwt-exp"] = str(exp)
         config["jobserv"]["host_api_key"] = ""
     else:
         chars = string.ascii_letters + string.digits + "!@#$^&*~"
@@ -598,12 +600,38 @@ def _docker_clean():
         log.exception(e)
 
 
+def _handle_expiring_token(args):
+    log.info("JWT is expiring soon. Starting shutdown")
+    # We need to unregister with server while we have permission. Howerver,
+    # we may be handling an active run, so we have to wait on that before
+    # we exit the process
+    try:
+        args.server.delete_host()
+    except Exception:
+        log.exception("Unable to delete host")
+
+    while not HostProps.idle():
+        log.info("Waiting for worker to become idle")
+        time.sleep(20)
+
+    if args.idle_command:
+        log.info("Worker is idle, calling %s", args.idle_command)
+        subprocess.check_call([args.idle_command])
+    sys.exit(0)
+
+
 def cmd_loop(args):
     # Ensure no other copy of this script is running
     try:
         cmd_args = [config["tools"]["worker-wrapper"], "check"]
     except KeyError:
         cmd_args = [sys.argv[0], "check"]
+
+    expires_str = config["jobserv"].get("jwt-exp")
+    expires = 0
+    if expires_str:
+        expires = float(expires_str)
+
     lockfile = os.path.join(os.path.dirname(script), ".worker-lock")
     with open(lockfile, "w+") as f:
         try:
@@ -637,6 +665,12 @@ def cmd_loop(args):
                     _docker_clean()
                     next_clean = time.time() + (args.docker_rm * 3600)
                 else:
+                    if expires:
+                        # figure out when we'll run next plus some slack. If we
+                        # expire before that, we need to shut down
+                        next_loop = time.time() + (args.every * 2)
+                        if expires < next_loop:
+                            _handle_expiring_token(args)
                     time.sleep(args.every)
         except (ConnectionError, TimeoutError, requests.RequestException):
             log.exception("Unable to check in with server, retrying now")
