@@ -8,7 +8,7 @@ PyYAML==6.0.1
 SQLAlchemy==1.4.23
 Werkzeug==3.0.1
 bcrypt==4.0.1
-cryptography==41.0.4
+cryptography==41.0.6
 dataclasses==0.6
 google-cloud-storage==2.10.0
 # gunicorn 20.1.0 switched from os.sendfile to socket.sendfile which causes
