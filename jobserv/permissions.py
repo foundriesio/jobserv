@@ -34,7 +34,7 @@ def health_can_access(health_path):
     return True
 
 
-def assert_internal_user():
+def _assert_internal_user():
     """A function that checks request headers to ensure the caller is a valid
     internal user."""
     if not INTERNAL_API_KEY:
@@ -54,27 +54,37 @@ def assert_internal_user():
 
 def assert_can_promote(project, build_id):
     """Is the requestor allowed to promote this build."""
-    assert_internal_user()
+    _assert_internal_user()
 
 
 def assert_can_build(project):
     """Is the requestor allowed to trigger a build."""
-    assert_internal_user()
+    _assert_internal_user()
 
 
 def assert_can_rerun(run):
     """Is the requestor allowed to re-run this run"""
-    assert_internal_user()
+    _assert_internal_user()
+
+
+def assert_create_project(proj_name):
+    """Is the requestor allowed to create a project with the given name"""
+    _assert_internal_user()
 
 
 def assert_create_trigger(proj):
     """Is the requestor allowed to create triggers on a project."""
-    return assert_internal_user()
+    return _assert_internal_user()
+
+
+def assert_can_view_triggers():
+    """Is the requestor allowed to view all triggers(includes secrets)"""
+    return _assert_internal_user()
 
 
 def assert_can_delete(project):
     """Is the requestor allowed to delete a project."""
-    assert_internal_user()
+    _assert_internal_user()
 
 
 def assert_worker_list():

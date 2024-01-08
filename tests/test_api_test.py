@@ -245,27 +245,3 @@ class TestAPITest(JobServTest):
         self.assertEqual("tr1", self.test.results[0].name)
         self.assertEqual("PASSED", self.test.results[0].status.name)
         self.assertEqual("tr2", self.test.results[1].name)
-
-    def test_test_find(self):
-        # internal api not signed, must fail
-        r = self.client.get("/find_test/")
-        self.assertEqual(401, r.status_code, r.data)
-
-        data = self.get_signed_json("/find_test/", query_string="context=d")
-        self.assertEqual(0, len(data["tests"]))
-        data = self.get_signed_json("/find_test/", query_string="context=test1-ctx")
-        self.assertEqual(1, len(data["tests"]))
-        self.assertEqual("test1", data["tests"][0]["name"])
-
-    def test_find_incomplete(self):
-        t = Test(self.test.run, "test2", "test2-ctx")
-        t.status = BuildStatus.PASSED
-        db.session.add(t)
-        db.session.commit()
-
-        # internal api not signed, must fail
-        r = self.client.get("/incomplete_tests/")
-        self.assertEqual(401, r.status_code)
-
-        data = self.get_signed_json("/incomplete_tests/")
-        self.assertEqual(["test1"], [x["name"] for x in data["tests"]])

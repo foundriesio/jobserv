@@ -316,7 +316,7 @@ def _register_github_hook(project, url, api_token, hook_token):
 
 @blueprint.route("/<project:proj>/webhook/", methods=("POST",))
 def create_webhook(proj):
-    u = permissions.assert_internal_user()
+    u = permissions.assert_create_trigger()
     p = get_or_404(Project.query.filter_by(name=proj))
 
     d = request.get_json() or {}
