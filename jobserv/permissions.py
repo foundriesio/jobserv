@@ -67,6 +67,11 @@ def assert_can_rerun(run):
     assert_internal_user()
 
 
+def assert_create_project(proj_name):
+    """Is the requestor allowed to create a project with the given name"""
+    assert_internal_user()
+
+
 def assert_create_trigger(proj):
     """Is the requestor allowed to create triggers on a project."""
     return assert_internal_user()

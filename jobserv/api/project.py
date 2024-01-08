@@ -32,7 +32,7 @@ def project_create():
         raise ApiError(401, 'Missing required parameter: "name"')
     sync = d.get("synchronous-builds", False)
 
-    permissions.assert_internal_user()
+    permissions.assert_create_project(proj)
     db.session.add(Project(proj, sync))
     db.session.commit()
 
