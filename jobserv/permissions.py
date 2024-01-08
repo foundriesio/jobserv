@@ -77,6 +77,11 @@ def assert_create_trigger(proj):
     return assert_internal_user()
 
 
+def assert_can_view_triggers():
+    """Is the requestor allowed to view all triggers(includes secrets)"""
+    return assert_internal_user()
+
+
 def assert_can_delete(project):
     """Is the requestor allowed to delete a project."""
     assert_internal_user()

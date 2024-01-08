@@ -12,7 +12,7 @@ blueprint = Blueprint("api_project_triggers", __name__, url_prefix="/project-tri
 
 @blueprint.route("/", methods=("GET",))
 def project_trigger_list():
-    permissions.assert_internal_user()
+    permissions.assert_can_view_triggers()
     t = request.args.get("type")
     if t:
         t = TriggerTypes[t].value
