@@ -113,7 +113,6 @@ def worker_get(name):
                 rundef = s.get_run_definition(r)
                 _fix_run_urls(rundef)
                 data["run-defs"] = [json.dumps(rundef)]
-                r.build.refresh_status()
             except Exception:
                 r.worker = None
                 r.status = "QUEUED"
