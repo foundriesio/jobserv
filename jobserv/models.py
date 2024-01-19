@@ -617,11 +617,26 @@ class Run(db.Model, StatusMixin):
         )
         db.session.commit()
         if rows == 1:
-            r = Run.query.get(run_id)
-            r.worker_name = worker.name
-            db.session.add(RunEvents(r, BuildStatus.RUNNING))
-            r.build.refresh_status()
-            db.session.commit()
+            # Critical Section!
+            # If any of this fails - we'll have a run in RUNNING,
+            # but no assigned worker. It will be blocked from working.
+            for i in range(3):
+                if i > 0:
+                    time.sleep(0.01)
+                try:
+                    r = Run.query.get(run_id)
+                    r.worker_name = worker.name
+                    db.session.add(RunEvents(r, BuildStatus.RUNNING))
+                    r.build.refresh_status()
+                    db.session.commit()
+                    return r
+                except Exception:
+                    logging.exception("unable to set working info for run")
+                    db.session.rollback()
+            # Not great but let's try to let it proceed anyway. We'll just
+            # have a run with no start time or worker-name, but the CI
+            # job will still get to execute.
+            logging.error("unable to update run's worker")
             return r
 
 
