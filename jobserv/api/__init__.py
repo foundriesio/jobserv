@@ -5,6 +5,7 @@ import traceback
 from sqlalchemy.exc import DataError
 
 from flask import current_app
+from werkzeug.exceptions import HTTPException
 
 from jobserv.api.build import blueprint as build_bp
 from jobserv.api.github import blueprint as github_bp
@@ -51,6 +52,10 @@ def register_blueprints(app):
             "message": "Not found",
         }
         return jsendify(data, 404)
+
+    @app.errorhandler(HTTPException)
+    def http_error(e):
+        return e.response.data, e.response.status_code
 
     @app.errorhandler(Exception)
     def unexpected_error(e):
