@@ -4,23 +4,16 @@ triggers:
     type: github_pr
     runs:
       - name: unit-test
-        container: python:3.11-alpine
+        container: python:3.11-alpine3.19
         host-tag: amd64
         script: unit-test
         shared-volumes:
           lmp-bitbake-cache: /lmp-bitbake-cache
 
       - name: flake8
-        container: python:3.11-alpine
+        container: python:3.11-alpine3.19
         host-tag: amd64
         script: flake8
-
-      - name: test-progress
-        container: python:3.11-alpine
-        host-tag: amd64
-        script: dumb-progress
-        console-progress:
-          progress-pattern: "\\nNOTE: Running task (?P<current>\\d+) of (?P<total>\\d+)"
 
   - name: build-container
     type: git_poller
@@ -48,28 +41,6 @@ triggers:
         script: flake8
 
 scripts:
-  dumb-progress: |
-    #!/bin/sh -ex
-    sleep 10s
-    echo "NOTE: Running task 1 of 12"
-    sleep 10s
-    echo "NOTE: Running task 2 of 12"
-    sleep 10s
-    echo "NOTE: Running task 3 of 12"
-    sleep 10s
-    echo "NOTE: Running task 4 of 12"
-    sleep 10s
-    echo "NOTE: Running task 5 of 12"
-    sleep 10s
-    echo "NOTE: Running task 6 of 12"
-    sleep 10s
-    echo "NOTE: Running task 7 of 12"
-    sleep 10s
-    echo "NOTE: Running task 8 of 12"
-    sleep 10s
-    echo "NOTE: Running task 9 of 12"
-    sleep 10s
-    echo "NOTE: Running task 10 of 12"
 
   flake8: |
     #!/bin/sh -ex
