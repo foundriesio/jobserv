@@ -9,7 +9,7 @@ RUN mkdir -p $APPDIR
 
 COPY ./requirements.txt /srv/jobserv/
 
-RUN apk --no-cache add python3 py3-pip mysql-client python3-dev musl-dev g++ openssl libffi-dev openssl-dev linux-headers && \
+RUN apk --no-cache add python3 py3-pip mysql-client python3-dev musl-dev g++ openssl libffi-dev openssl-dev linux-headers mariadb-connector-c && \
 	pip3 install -r $APPDIR/requirements.txt && \
 	apk del python3-dev musl-dev g++ libffi-dev openssl-dev linux-headers
 
