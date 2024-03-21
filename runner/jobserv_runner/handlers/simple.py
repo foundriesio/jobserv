@@ -354,7 +354,6 @@ class SimpleHandler(object):
             if token:
                 user = self.rundef["secrets"]["qpmuser"]
                 log.info("Creating a qpm token entry")
-                user = self.rundef["secrets"]["bitbucketuser"]
                 f.write("machine qpm-git.qualcomm.com\n")
                 f.write("login %s\npassword %s\n" % (user, token))
 
