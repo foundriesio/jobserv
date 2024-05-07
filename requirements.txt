@@ -6,7 +6,7 @@ PyJWT==2.8.0
 PyMySQL==1.1.0
 PyYAML==6.0.1
 SQLAlchemy==1.4.23
-Werkzeug==3.0.1
+Werkzeug==3.0.3
 bcrypt==4.0.1
 cryptography==42.0.4
 dataclasses==0.6
