@@ -1,7 +1,9 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
+import json
 
 from jobserv.models import Project, ProjectTrigger, db
+from jobserv.permissions import _sign
 from tests import JobServTest
 
 
@@ -50,3 +52,48 @@ class ProjectTriggerAPITest(JobServTest):
 
         r = self.client.get("/projects/p/triggers/")
         self.assertEqual(401, r.status_code)
+
+    def test_bad_secret(self):
+        p = Project("p")
+        db.session.add(p)
+        db.session.flush()
+        self.assertRaisesRegex(
+            ValueError,
+            "Invalid secret name `",
+            ProjectTrigger,
+            "user",
+            1,
+            p,
+            "repo",
+            "file",
+            {"bad secret": "value"},
+        )
+
+        url = "http://localhost/projects/p/triggers/"
+        headers = {"Content-type": "application/json"}
+        _sign(url, headers, "POST")
+        trigger = {
+            "type": "simple",
+            "owner": "1",
+            "secrets": [
+                {"name": "bad key", "value": "123"},
+            ],
+        }
+        r = self.client.post(url, headers=headers, data=json.dumps(trigger))
+        self.assertEqual(400, r.status_code, r.text)
+        self.assertIn("Invalid secret name `bad key`", r.json["message"])
+
+        # now test the PATCH API
+        trigger["secrets"] = []
+        r = self.client.post(url, headers=headers, data=json.dumps(trigger))
+        self.assertEqual(201, r.status_code, r.text)
+
+        url = "http://localhost/projects/p/triggers/1/"
+        headers = {"Content-type": "application/json"}
+        _sign(url, headers, "PATCH")
+        trigger["secrets"] = [
+            {"name": "bad patch", "value": "123"},
+        ]
+        r = self.client.patch(url, headers=headers, data=json.dumps(trigger))
+        self.assertEqual(400, r.status_code, r.text)
+        self.assertIn("Invalid secret name `bad patch`", r.json["message"])

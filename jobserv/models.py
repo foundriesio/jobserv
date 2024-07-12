@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import random
+import re
 import string
 import time
 from typing import Dict
@@ -34,6 +35,8 @@ from jobserv.settings import (
     WORKER_DIR,
 )
 from jobserv.stats import StatsClient
+
+VALID_SECRET_PATTERN = r"^[a-zA-Z0-9_\-\.]+$"
 
 db = SQLAlchemy()
 ANNOTATION_COLUMN_TYPE = MEDIUMTEXT
@@ -179,9 +182,12 @@ class ProjectTrigger(db.Model):
 
     def update_secrets(self):
         assert isinstance(self._secret_data, dict)
+        pat = re.compile(VALID_SECRET_PATTERN)
         for k, v in self._secret_data.items():
             if not isinstance(k, str):
                 raise ValueError("Invalid secret name: %r" % k)
+            if not pat.match(k):
+                raise ValueError(f"Invalid secret name `{k}`. Must match pattern: `{VALID_SECRET_PATTERN}`")
             if not isinstance(v, str):
                 raise ValueError("Invalid secret value(%s): %r" % (k, v))
         self._init_fernet()

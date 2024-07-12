@@ -140,7 +140,10 @@ def project_create_trigger(proj):
     except KeyError:
         secrets = d
 
-    db.session.add(ProjectTrigger(owner, ttype, p, dr, df, secrets))
+    try:
+        db.session.add(ProjectTrigger(owner, ttype, p, dr, df, secrets))
+    except ValueError as e:
+        raise ApiError(400, str(e))
 
     db.session.commit()
     return jsendify({}, 201)
@@ -175,6 +178,9 @@ def project_patch_trigger(proj, tid):
                     del current_secrets[name]
             else:
                 current_secrets[name] = value
-        trigger.update_secrets()
+        try:
+            trigger.update_secrets()
+        except ValueError as e:
+            raise ApiError(400, str(e))
     db.session.commit()
     return jsendify({})
