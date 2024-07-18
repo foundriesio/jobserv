@@ -1,6 +1,7 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
 
+from concurrent.futures import ProcessPoolExecutor
 import os
 import datetime
 import logging
@@ -9,6 +10,7 @@ from time import sleep
 from flask import redirect
 from google.api_core.exceptions import ServiceUnavailable
 from google.cloud import storage
+from google.cloud.storage.blob import Blob
 from google.cloud.exceptions import NotFound
 
 from jobserv.settings import GCE_BUCKET
@@ -78,8 +80,9 @@ class Storage(BaseStorage):
 
     def delete_build(self, build):
         name = "%s/%s/" % (build.project.name, build.build_id)
-        for blob in self.bucket.list_blobs(prefix=name):
-            blob.delete()
+        blobs = self.bucket.list_blobs(prefix=name)
+        with ProcessPoolExecutor(max_workers=20) as conn:
+            conn.map(Blob.delete, blobs)
 
     def _generate_put_url(self, run, path, expiration, content_type):
         b = self.bucket.blob(self._get_run_path(run, path))
