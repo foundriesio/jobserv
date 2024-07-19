@@ -3,6 +3,7 @@
 import traceback
 
 from sqlalchemy.exc import DataError
+from werkzeug.exceptions import HTTPException
 
 from flask import current_app
 
@@ -34,6 +35,10 @@ def register_blueprints(app):
     @app.errorhandler(ApiError)
     def api_error(e):
         return e.resp
+
+    @app.errorhandler(HTTPException)
+    def werkzeug_err(e):
+        return e.response
 
     @app.errorhandler(DataError)
     def data_error(e):
