@@ -106,11 +106,10 @@ class BuildAPITest(JobServTest):
         r = self.client.post(self.urlbase, data={}, headers=headers)
         self.assertEqual(401, r.status_code)  # not signed
 
+        headers = {"Content-type": "application/json"}
         _sign("http://localhost/projects/proj-1/builds/", headers, "POST")
         r = self.client.post(self.urlbase, data={}, headers=headers)
-        self.assertEqual(500, r.status_code)
-        data = json.loads(r.data.decode())
-        self.assertEqual("error", data["status"])
+        self.assertEqual(400, r.status_code)
 
     @patch("jobserv.trigger.Storage")
     def test_build_unexpected(self, storage):

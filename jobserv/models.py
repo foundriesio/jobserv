@@ -187,7 +187,9 @@ class ProjectTrigger(db.Model):
             if not isinstance(k, str):
                 raise ValueError("Invalid secret name: %r" % k)
             if not pat.match(k):
-                raise ValueError(f"Invalid secret name `{k}`. Must match pattern: `{VALID_SECRET_PATTERN}`")
+                raise ValueError(
+                    f"Invalid secret name `{k}`. Must match pattern: `{VALID_SECRET_PATTERN}`"
+                )
             if not isinstance(v, str):
                 raise ValueError("Invalid secret value(%s): %r" % (k, v))
         self._init_fernet()
