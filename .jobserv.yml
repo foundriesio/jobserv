@@ -56,6 +56,7 @@ scripts:
     git config --global user.email "cibot@example.com"
     git config --global user.name "cibot"
     git config --system protocol.file.allow always  # for GitPollerHandlerTest.test_git_submodules
+    git config --global --add safe.directory /repo/.git # for tests.runner.test_handler_simple.SimpleHandlerTest.test_prepare_script_repo
 
     ls /lmp-bitbake-cache/
     sh ./unit-test.sh
