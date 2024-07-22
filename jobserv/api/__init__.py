@@ -38,7 +38,9 @@ def register_blueprints(app):
 
     @app.errorhandler(HTTPException)
     def werkzeug_err(e):
-        return e.response
+        if e.response:
+            return e.response
+        return e.description, e.code
 
     @app.errorhandler(DataError)
     def data_error(e):
