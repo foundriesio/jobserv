@@ -95,6 +95,8 @@ class Storage(BaseStorage):
         b = self.bucket.blob(self._get_run_path(run, path))
         expiration = datetime.timedelta(seconds=expiration)
         rd = "inline; filename=%s" % os.path.basename(path)
-        return redirect(
+        resp = redirect(
             b.generate_signed_url(expiration=expiration, response_disposition=rd)
         )
+        resp.headers["Cache-Control"] = "private"
+        return resp
