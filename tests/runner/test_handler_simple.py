@@ -242,6 +242,25 @@ class SimpleHandlerTest(TestCase):
         msg = self.handler.jobserv.update_run.call_args[0][0]
         self.assertIn(b"\n   |RuntimeError: foo bar\n", msg)
 
+    def test_prepare_netrc(self):
+        """Ensure we create correct .netrc file"""
+        self.handler.rundef = {
+            "project": "p",
+            "secrets": {
+                "githubtok": "blah",
+                "netrc-artifactory": "machine artifactory.com\nlogin Rob\npassword S3cure",
+            },
+            "persistent-volumes": {"blah": "/foo"},
+            "script": "foo",
+            "run_url": "http://for-simulator-instructions/run",
+        }
+        self.handler.prepare_mounts()
+        netrc = os.path.join(self.handler.run_dir, ".netrc")
+        with open(netrc) as f:
+            val = f.read()
+            self.assertIn("machine github.com\nlogin blah", val)
+            self.assertIn("machine artifactory.com\nlogin Rob\npassword S3cure", val)
+
     def test_prepare_script_repo(self):
         """Ensure we set up a proper environment for script-repo runs."""
         # just clone ourself

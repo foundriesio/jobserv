@@ -362,6 +362,11 @@ class SimpleHandler(object):
                 f.write("machine chipmaster2.qti.qualcomm.com\n")
                 f.write("login %s\npassword %s\n" % (user, token))
 
+            for k, v in secrets.items():
+                if k.startswith("netrc-"):
+                    log.info("Creating a .netrc entry for %s", k)
+                    f.write(v.strip())
+                    f.write("\n")
 
         # NOTE: Curl (used by git) doesn't look at the $NETRC environment
         # for overriding the .netrc location. We have to assume the
