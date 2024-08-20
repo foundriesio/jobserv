@@ -321,7 +321,9 @@ class SimpleHandler(object):
             f.write("login jobserv\n")
             f.write("password %s\n" % self.jobserv._api_key)
 
-            token = (self.rundef.get("secrets") or {}).get("githubtok")
+            secrets = self.rundef.get("secrets") or {}
+
+            token = secrets.get("githubtok")
             if token:
                 log.info("Creating a github token entry")
                 f.write("machine github.com\n")
@@ -329,36 +331,37 @@ class SimpleHandler(object):
 
             # we have to guess at a gitlab "machine" name
             url = (self.rundef.get("script-repo") or {}).get("clone-url")
-            token = (self.rundef.get("secrets") or {}).get("gitlabtok")
+            token = secrets.get("gitlabtok")
             if token and url:
-                user = self.rundef["secrets"]["gitlabuser"]
+                user = secrets["gitlabuser"]
                 machine = urllib.parse.urlparse(url).netloc
                 if machine != "github.com":
                     log.info("Creating a gitlab token entry for %s", machine)
                     f.write("machine %s\n" % machine)
                     f.write("login %s\npassword %s\n" % (user, token))
             if token:
-                user = self.rundef["secrets"]["gitlabuser"]
+                user = secrets["gitlabuser"]
                 log.info("Creating a gitlab.com token entry")
                 f.write("machine gitlab.com\n")
                 f.write("login %s\npassword %s\n" % (user, token))
 
-            token = (self.rundef.get("secrets") or {}).get("bitbuckettok")
+            token = secrets.get("bitbuckettok")
             if token:
                 log.info("Creating a bitbucket token entry")
-                user = self.rundef["secrets"]["bitbucketuser"]
+                user = secrets["bitbucketuser"]
                 f.write("machine bitbucket.org\n")
                 f.write("login %s\npassword %s\n" % (user, token))
 
-            token = (self.rundef.get("secrets") or {}).get("qpmtok")
+            token = secrets.get("qpmtok")
             if token:
-                user = self.rundef["secrets"]["qpmuser"]
+                user = secrets["qpmuser"]
                 log.info("Creating a qpm token entry")
                 f.write("machine qpm-git.qualcomm.com\n")
                 f.write("login %s\npassword %s\n" % (user, token))
                 log.info("Creating a chipcode token entry")
                 f.write("machine chipmaster2.qti.qualcomm.com\n")
                 f.write("login %s\npassword %s\n" % (user, token))
+
 
         # NOTE: Curl (used by git) doesn't look at the $NETRC environment
         # for overriding the .netrc location. We have to assume the
