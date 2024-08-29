@@ -194,7 +194,7 @@ class SimpleHandler(object):
         logctx = self.log_context("Pulling container: " + container)
         login = self.docker_login()
         with logctx as log, login:
-            for x in (0, 2, 4):  # try three times with these back-off vals
+            for x in (0, 2, 3, 5):  # try four times with back-off vals
                 if x:
                     log.warn("Unable to pull container, retrying in %ds", x)
                     time.sleep(x)
