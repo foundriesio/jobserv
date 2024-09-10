@@ -1,7 +1,7 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
-import traceback
 
+import json_logging
 from sqlalchemy.exc import DataError
 from werkzeug.exceptions import HTTPException
 
@@ -44,10 +44,10 @@ def register_blueprints(app):
 
     @app.errorhandler(DataError)
     def data_error(e):
+        cor_id = json_logging.get_correlation_id()
         data = {
-            "message": "An unexpected error occurred inserting data",
+            "message": "An unexpected error occurred inserting data. Correlation ID: {cor_id}",
             "error_msg": str(e),
-            "stack_trace": traceback.format_exc(),
         }
         current_app.logger.exception("Unexpected DB error caught in BP error handler")
         return jsendify(data, 400)
@@ -61,10 +61,10 @@ def register_blueprints(app):
 
     @app.errorhandler(Exception)
     def unexpected_error(e):
+        cor_id = json_logging.get_correlation_id()
         data = {
-            "message": "An unexpected error occurred",
+            "message": "An unexpected error occurred. Correlation ID: {cor_id}",
             "error_msg": str(e),
-            "stack_trace": traceback.format_exc(),
         }
         current_app.logger.exception("Unexpected error caught in BP error handler")
         return jsendify(data, 500)

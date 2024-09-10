@@ -10,6 +10,7 @@ from flask.json.provider import JSONProvider
 from flask_migrate import Migrate
 
 import json_logging
+from urllib.parse import unquote as urldecode
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.routing import PathConverter
 
@@ -49,6 +50,14 @@ class RequestIdMiddleware(ProxyFix):
             return start_response(status, response_headers, exc_info)
 
         return ProxyFix.__call__(self, environ, new_start_response)
+
+
+def _reject_relative_paths():
+    # NOTE: Some load balancers will normalize paths. Others like nginx don't.
+    # Reject shady stuff here to here to make sure our code does rely on
+    # on implementation specific details of a load-balancer.
+    if ".." in urldecode(request.path):
+        return jsendify(f"Invalid path specifed: {request.path}", 400)
 
 
 def _user_has_permission():
@@ -102,6 +111,7 @@ def create_app(settings_object="jobserv.settings"):
     if Storage.blueprint:
         app.register_blueprint(Storage.blueprint)
 
+    app.before_request(_reject_relative_paths)
     app.before_request(_user_has_permission)
     app.register_error_handler(404, _handle_404)
     return app
