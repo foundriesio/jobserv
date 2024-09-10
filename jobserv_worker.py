@@ -492,10 +492,53 @@ def _update_max_memory(rundef):
         rundef["max-mem-bytes"] = total
 
 
+def _block_metadata_service():
+    """Block access to GCP/AWS metadata instance service if configured."""
+
+    # from: https://github.com/torvalds/linux/blob/8d8d276ba2fb5f9ac4984f5c10ae60858090babc/include/uapi/linux/route.h#L61
+    RTF_REJECT = 0x0200
+
+    block = config["jobserv"].get("block-metadata-service")
+    if block:
+        with open("/proc/net/route") as f:
+            for line in f:
+                parts = line.split()
+                if parts[1].lower() == "fea9fea9":
+                    # 169.254.169.254 encoded
+                    flags = int(parts[3], base=16)
+                    if flags & RTF_REJECT:
+                        log.warning(
+                            "IPv4 route to cloud metadata service already blocked"
+                        )
+                        break
+            else:
+                log.warning("Blocking IPv4 route to cloud metadata service")
+                subprocess.check_call(
+                    ["ip", "route", "add", "unreachable", "169.254.169.254"]
+                )
+
+        with open("/proc/net/ipv6_route") as f:
+            for line in f:
+                parts = line.split()
+                if parts[0].lower() == "fd000ec2000000000000000000000254":
+                    flags = int(parts[8], base=16)
+                    if flags & RTF_REJECT:
+                        log.warning(
+                            "IPv6 route to cloud metadata service already blocked"
+                        )
+                        break
+            else:
+                log.warning("Blocking IPv6 route to cloud metadata service")
+                subprocess.check_call(
+                    ["ip", "-6", "route", "add", "unreachable", "fd00:ec2::254"]
+                )
+
+
 def _handle_run(jobserv, rundef, rundir=None):
     runsdir = os.path.join(os.path.dirname(script), "runs")
     try:
         _run_callback("RUN_START", rundef)
+        _block_metadata_service()
         _update_shared_volumes_mapping(rundef)
         _update_max_memory(rundef)
         jobserv.update_run(rundef, "RUNNING", "Setting up runner on worker")
