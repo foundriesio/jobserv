@@ -43,6 +43,9 @@ BUILD_URL_FMT = os.environ.get("BUILD_URL_FMT")
 RUN_URL_FMT = os.environ.get("RUN_URL_FMT")
 # BUILD_URL_FMT = 'https://example.com/{project}/{build}
 # RUN_URL_FMT = 'https://example.com/{project}/{build}/{run}
+JOBSERV_URL = os.environ.get("JOBSERV_URL", "http://lci-web")
+if JOBSERV_URL[-1] == "/":
+    JOBSERV_URL = JOBSERV_URL[:-1]
 
 # Allows a custom rule for project names.
 # Eg - projects could be defined as user/projname with:
