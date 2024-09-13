@@ -14,7 +14,7 @@ from jobserv.notify import (
     notify_surge_started,
     notify_surge_ended,
 )
-from jobserv.settings import SURGE_SUPPORT_RATIO, WORKER_ROTATE_PINGS_LOG
+from jobserv.settings import SURGE_SUPPORT_RATIO, WORKER_ROTATE_PINGS_LOG, JOBSERV_URL
 from jobserv.stats import StatsClient
 
 SURGE_FILE = os.path.join(WORKER_DIR, "enable_surge")
@@ -158,7 +158,8 @@ def _check_queue():
 
 
 def _update_run(run, status, message):
-    url = "http://lci-web/projects/%s/builds/%s/runs/%s/" % (
+    url = "%s/projects/%s/builds/%s/runs/%s/" % (
+        JOBSERV_URL,
         run.build.project.name,
         run.build.build_id,
         run.name,
