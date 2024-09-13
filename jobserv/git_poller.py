@@ -19,7 +19,7 @@ from typing import Dict, Iterator, List, Optional, Tuple
 
 from jobserv.flask import permissions
 from jobserv.project import ProjectDefinition
-from jobserv.settings import GIT_POLLER_INTERVAL, GITLAB_SERVERS
+from jobserv.settings import GIT_POLLER_INTERVAL, GITLAB_SERVERS, JOBSERV_URL
 from jobserv.storage import Storage
 
 logging.basicConfig(level="INFO", format="%(asctime)s %(levelname)s: %(message)s")
@@ -27,10 +27,6 @@ log = logging.getLogger()
 logging.getLogger("pykwalify.core").setLevel(logging.WARNING)
 logging.getLogger("pykwalify.rule").setLevel(logging.WARNING)
 logging.getLogger("requests").setLevel(logging.WARNING)
-
-JOBSERV_URL = os.environ.get("JOBSERV_URL", "http://lci-web")
-if JOBSERV_URL[-1] == "/":
-    JOBSERV_URL = JOBSERV_URL[:-1]
 
 _cgit_repos: Dict[str, bool] = {}
 
