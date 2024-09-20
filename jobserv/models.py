@@ -93,13 +93,22 @@ class Project(db.Model):
     name = db.Column(db.String(80), unique=True)
 
     synchronous_builds = db.Column(db.Boolean, default=False)
+    allowed_host_tags_str = db.Column(db.Text())
 
     builds = db.relationship("Build", order_by="-Build.id")
     triggers = db.relationship("ProjectTrigger")
 
-    def __init__(self, name=None, synchronous_builds=False):
+    def __init__(self, name=None, synchronous_builds=False, allowed_host_tags=None):
         self.name = name
         self.synchronous_builds = synchronous_builds
+        if allowed_host_tags:
+            self.allowed_host_tags_str = json.dumps(allowed_host_tags)
+
+    @property
+    def allowed_host_tags(self):
+        if self.allowed_host_tags_str:
+            return json.loads(self.allowed_host_tags_str)
+        return None
 
     def as_json(self, detailed=False):
         data = {
@@ -107,6 +116,9 @@ class Project(db.Model):
             "synchronous-builds": self.synchronous_builds,
             "url": url_for("api_project.project_get", proj=self.name, _external=True),
         }
+        allowed_host_tags = self.allowed_host_tags
+        if allowed_host_tags:
+            data["allowed-host-tags"] = allowed_host_tags
         if detailed:
             data["builds_url"] = url_for(
                 "api_build.build_list", proj=self.name, _external=True

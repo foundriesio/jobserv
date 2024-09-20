@@ -48,6 +48,17 @@ class ProjectAPITest(JobServTest):
         )
         self.assertEqual(401, r.status_code)
 
+    def test_project_create_bad_allowed_hosts(self):
+        url = "http://localhost/projects/"
+        headers = {"Content-type": "application/json"}
+        _sign(url, headers, "POST")
+        r = self.client.post(
+            "/projects/",
+            headers=headers,
+            data=json.dumps({"name": "foo", "allowed-host-tags": "12"}),
+        )
+        self.assertEqual(400, r.status_code, r.text)
+
     def test_project_create(self):
         url = "http://localhost/projects/"
         headers = {"Content-type": "application/json"}
@@ -64,6 +75,18 @@ class ProjectAPITest(JobServTest):
         self.assertEqual(201, r.status_code, r.data)
         p = Project.query.filter(Project.name == "foo2").one()
         self.assertTrue(p.synchronous_builds)
+
+        url = "http://localhost/projects/"
+        headers = {"Content-type": "application/json"}
+        _sign(url, headers, "POST")
+        r = self.client.post(
+            url,
+            headers=headers,
+            data=json.dumps({"name": "bar", "allowed-host-tags": ["1", "2"]}),
+        )
+        self.assertEqual(201, r.status_code, r.data)
+        p = Project.query.filter(Project.name == "bar").one()
+        self.assertEqual(["1", "2"], p.allowed_host_tags)
 
     def test_project_delete_denied(self):
         self.create_projects("proj-1")

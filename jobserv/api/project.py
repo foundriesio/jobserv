@@ -1,6 +1,7 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
 
+import json
 from flask import Blueprint, request, url_for
 
 from jobserv.flask import permissions
@@ -31,9 +32,12 @@ def project_create():
     if not proj:
         raise ApiError(401, 'Missing required parameter: "name"')
     sync = d.get("synchronous-builds", False)
+    allowed_host_tags = d.get("allowed-host-tags")
+    if allowed_host_tags and not isinstance(allowed_host_tags, list):
+        raise ApiError(400, 'Invalid type for "allowed-host-tags", must be "list"')
 
     permissions.assert_create_project(proj)
-    db.session.add(Project(proj, sync))
+    db.session.add(Project(proj, sync, allowed_host_tags))
     db.session.commit()
 
     url = url_for("api_project.project_get", proj=proj, _external=True)
