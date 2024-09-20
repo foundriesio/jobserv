@@ -44,6 +44,30 @@ def project_create():
     return jsendify({"url": url}, 201)
 
 
+@blueprint.route("/<project:proj>/", methods=("PATCH",))
+def project_update(proj):
+    permissions.assert_create_project(proj)
+    p = get_or_404(Project.query.filter_by(name=proj))
+
+    d = request.get_json() or {}
+    if "allowed-host-tags" in d:
+        allowed = d.get("allowed-host-tags")
+        if allowed:
+            if not isinstance(allowed, list):
+                raise ApiError(
+                    400, 'Invalid type for "allowed-host-tags", must be "list"'
+                )
+            p.allowed_host_tags_str = json.dumps(allowed)
+        else:
+            p.allowed_hosts_tags_str = ""
+        db.session.commit()
+    else:
+        raise ApiError(
+            400, '"allowed-hosts" is only project attribute that can be modified'
+        )
+    return 204
+
+
 @blueprint.route("/<project:proj>/", methods=("DELETE",))
 def project_delete(proj):
     permissions.assert_can_delete(proj)
