@@ -337,6 +337,9 @@ def run_status(project, build, run, status=None):
                 db.session.delete(t)
         run.set_status(status)
         db.session.commit()
+        if run.status in (BuildStatus.FAILED, BuildStatus.PASSED):
+            # The run is finished, move logs from disk to GCS
+            Storage().copy_log(run)
         click.echo("Run is now: %r" % run)
 
 
