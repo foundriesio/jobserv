@@ -63,9 +63,10 @@ def project_update(proj):
         db.session.commit()
     else:
         raise ApiError(
-            400, '"allowed-hosts" is only project attribute that can be modified'
+            400,
+            '"allowed-host-tags" is the only project attribute that can be modified',
         )
-    return 204
+    return jsendify({}, 200)
 
 
 @blueprint.route("/<project:proj>/", methods=("DELETE",))

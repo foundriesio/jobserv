@@ -88,6 +88,22 @@ class ProjectAPITest(JobServTest):
         p = Project.query.filter(Project.name == "bar").one()
         self.assertEqual(["1", "2"], p.allowed_host_tags)
 
+    def test_project_patch(self):
+        self.create_projects("job-1")
+
+        url = "http://localhost/projects/job-1/"
+        headers = {"Content-type": "application/json"}
+        _sign(url, headers, "PATCH")
+        r = self.client.patch(url, headers=headers, data=json.dumps({"name": "foo"}))
+        self.assertEqual(400, r.status_code, r.data)
+
+        r = self.client.patch(
+            url, headers=headers, data=json.dumps({"allowed-host-tags": ["1", "2"]})
+        )
+        self.assertEqual(200, r.status_code, r.data)
+        p = Project.query.filter(Project.name == "job-1").one()
+        self.assertEqual(["1", "2"], p.allowed_host_tags)
+
     def test_project_delete_denied(self):
         self.create_projects("proj-1")
         url = "http://localhost/projects/proj-1/"
