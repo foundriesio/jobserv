@@ -639,7 +639,7 @@ class Run(db.Model, StatusMixin):
                     db.session.commit()
                     return r
                 except Exception:
-                    logging.exception("unable to set working info for run")
+                    logging.warning("unable to set working info for run")
                     db.session.rollback()
             # Not great but let's try to let it proceed anyway. We'll just
             # have a run with no start time or worker-name, but the CI
