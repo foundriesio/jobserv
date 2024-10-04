@@ -36,6 +36,7 @@ def _check_for_trigger_upgrade(rundef, trigger_type, parent_trigger_type):
 def trigger_runs(
     storage, projdef, build, trigger, params, secrets, parent_type, queue_priority=0
 ):
+    allowed_host_tags = build.project.allowed_host_tags
     name_fmt = trigger.get("run-names")
     added = []
     try:
@@ -54,6 +55,11 @@ def trigger_runs(
             db.session.flush()
             added.append(r)
             rundef = projdef.get_run_definition(r, run, trigger, params, secrets)
+            if allowed_host_tags and r.host_tag not in allowed_host_tags:
+                error = f"Run requested a host-tag that is not configured for this project: {r.host_tag}"
+                logging.error(error)
+                _fail_run(r, error)
+                build.status = BuildStatus.FAILED
             _check_for_trigger_upgrade(rundef, trigger["type"], parent_type)
             storage.set_run_definition(r, rundef)
     except ApiError:
@@ -68,6 +74,14 @@ def trigger_runs(
             r.status = BuildStatus.FAILED
         db.session.commit()
         raise ApiError(500, str(e) + "\n" + traceback.format_exc())
+
+
+def _fail_run(run, reason):
+    run.set_status(BuildStatus.FAILED)
+    storage = Storage()
+    with storage.console_logfd(run, "a") as f:
+        f.write(reason)
+    storage.copy_log(run)
 
 
 def _fail_unexpected(build, exception):

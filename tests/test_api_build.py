@@ -146,6 +146,44 @@ class BuildAPITest(JobServTest):
         self._post(self.urlbase, json.dumps(data), headers, 500)
         self.assertEqual([BuildStatus.FAILED], [x.status for x in Run.query])
 
+    @patch("jobserv.trigger.Storage")
+    def test_build_trigger_bad_tag(self, storage):
+        """Assert we can trigger a minimal build."""
+
+        self.project.allowed_host_tags_str = json.dumps(["amd64"])
+        db.session.commit()
+
+        headers = {"Content-type": "application/json"}
+        _sign("http://localhost/projects/proj-1/builds/", headers, "POST")
+
+        data = {
+            "trigger-name": "bad-host-tag",
+            "project-definition": {
+                "timeout": 1,
+                "triggers": [
+                    {
+                        "name": "bad-host-tag",
+                        "type": "simple",
+                        "runs": [
+                            {
+                                "name": "r1",
+                                "container": "alpine",
+                                "script": "compile",
+                                "host-tag": "dont_allow_this",
+                            },
+                        ],
+                    }
+                ],
+                "scripts": {
+                    "compile": "does not matter",
+                },
+            },
+        }
+        self._post(self.urlbase, json.dumps(data), headers, 201)
+        build = self.project.builds[0]
+        self.assertEqual(BuildStatus.FAILED, build.runs[0].status)
+        self.assertEqual(BuildStatus.FAILED, build.status)
+
     @patch("jobserv.api.build.trigger_build")
     def test_build_trigger_simple(self, trigger_build):
         """Assert we can trigger a minimal build."""
