@@ -46,7 +46,7 @@ def register_blueprints(app):
     def data_error(e):
         cor_id = json_logging.get_correlation_id()
         data = {
-            "message": "An unexpected error occurred inserting data. Correlation ID: {cor_id}",
+            "message": f"An unexpected error occurred inserting data. Correlation ID: {cor_id}",
             "error_msg": str(e),
         }
         current_app.logger.exception("Unexpected DB error caught in BP error handler")
@@ -63,7 +63,7 @@ def register_blueprints(app):
     def unexpected_error(e):
         cor_id = json_logging.get_correlation_id()
         data = {
-            "message": "An unexpected error occurred. Correlation ID: {cor_id}",
+            "message": f"An unexpected error occurred. Correlation ID: {cor_id}",
             "error_msg": str(e),
         }
         current_app.logger.exception("Unexpected error caught in BP error handler")
