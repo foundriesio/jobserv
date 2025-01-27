@@ -33,7 +33,7 @@ class ApiTest(JobServTest):
         trigger = mock.Mock()
         trigger.definition_repo = "https://github.com/foo"
         with self.assertRaisesRegex(ValueError, "No github_pr trigger types"):
-            _get_proj_def(trigger, "owner", "repo", "sha", "token")
+            _get_proj_def(trigger, "owner", "repo", "sha", "main", "token")
 
     @mock.patch("requests.get")
     def test_get_proj_def_heracles(self, get):
@@ -43,4 +43,38 @@ class ApiTest(JobServTest):
 
         exp = r"Project definition does not exist:.*\.jobserv.yml"
         with self.assertRaisesRegex(ValueError, exp):
-            _get_proj_def(trigger, "owner", "repo", "sha", "token")
+            _get_proj_def(trigger, "owner", "repo", "sha", "main", "token")
+
+    @mock.patch("requests.get")
+    def test_get_proj_def_branches(self, get):
+        """Check that we can do per-branch logic in jobserv.yml for GH"""
+        rv = mock.Mock()
+        rv.status_code = 200
+        rv.text = r"""
+triggers:
+  - name: Code Review - foo/bar
+    type: github_pr
+    params:
+      GH_BRANCH: foo, bar
+    runs:
+      - name: build
+        container: hub.foundries.io/lmp-sdk
+        host-tag: amd64-partner-gcp-nocache
+        script: /bin/true
+
+  - name: Code Review
+    type: github_pr
+    runs:
+      - name: build
+        container: hub.foundries.io/lmp-sdk
+        host-tag: amd64-partner-gcp-nocache
+        script: /bin/true
+"""
+        get.return_value = rv
+        trigger = mock.Mock()
+        trigger.definition_repo = "https://github.com/foo"
+        name, _ = _get_proj_def(trigger, "owner", "repo", "sha", "foo", "token")
+        self.assertEqual("Code Review - foo/bar", name)
+
+        name, _ = _get_proj_def(trigger, "owner", "repo", "sha", "main", "token")
+        self.assertEqual("Code Review", name)

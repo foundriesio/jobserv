@@ -1,0 +1,24 @@
+timeout: 5
+triggers:
+  - name: github review for v1
+    type: github_pr
+    params:
+      # GH BRANCH is a comma separated list of branches this trigger is valid for
+      GH_BRANCH: v1, v1beta
+    runs:
+      - name: unit-test
+        container: python:3.5-alpine
+        host-tag: amd64
+        script: compile
+
+  - name: github review for all
+    type: github_pr
+    # NO GH_BRANCH is set here - so its runs everything else
+    runs:
+      - name: unit-test
+        container: python:3.5-alpine
+        host-tag: amd64
+        script: compile
+
+scripts:
+  compile: /bin/true

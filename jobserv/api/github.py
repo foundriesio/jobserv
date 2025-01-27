@@ -39,6 +39,7 @@ def _get_params(owner, repo, pr_num, token):
                     "GH_PRNUM": int(pr_num),
                     "GH_OWNER": owner,
                     "GH_REPO": repo,
+                    "GH_BRANCH": data["base"]["ref"],
                     "GH_STATUS_URL": data["statuses_url"],
                     "GH_TARGET_REPO": data["base"]["repo"]["clone_url"],
                     "GIT_URL": data["head"]["repo"]["clone_url"],
@@ -52,7 +53,7 @@ def _get_params(owner, repo, pr_num, token):
     raise ApiError(500, "Error finding SHA: %d - %s" % (r.status_code, r.text))
 
 
-def _get_proj_def(trigger, owner, repo, sha, token):
+def _get_proj_def(trigger, owner, repo, sha, branch, token):
     headers = {
         "Content-Type": "application/json",
         "Authorization": "token " + token,
@@ -92,7 +93,10 @@ def _get_proj_def(trigger, owner, repo, sha, token):
         data = yaml.safe_load(resp.text)
         for trigger in data.get("triggers", []):
             if trigger["type"] == "github_pr":
-                return trigger["name"], data
+                branches_str = (trigger.get("params") or {}).get("GH_BRANCH", "")
+                branches = [x.strip() for x in branches_str.split(",") if x]
+                if not branches or branch in branches:
+                    return trigger["name"], data
         raise ValueError("No github_pr trigger types defined")
     raise ValueError("Project definition does not exist: " + url)
 
@@ -256,7 +260,9 @@ def on_webhook(proj):
     owner, repo = repo.split("/")
     params = _get_params(owner, repo, pr_num, token)
     try:
-        trig, proj = _get_proj_def(trigger, owner, repo, params["GIT_SHA"], token)
+        trig, proj = _get_proj_def(
+            trigger, owner, repo, params["GIT_SHA"], params["GH_BRANCH"], token
+        )
         b, commit = trigger_build(
             trigger.project,
             reason,
