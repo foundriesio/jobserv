@@ -12,6 +12,7 @@ import logging
 import os
 import random
 import re
+from shutil import rmtree
 import string
 import time
 from typing import Dict
@@ -860,6 +861,14 @@ class Worker(db.Model):
             if not self.surges_only or self.in_queue_surge():
                 return True
         return False
+
+    def delete(self):
+        self.deleted = True
+        db.session.commit()
+        try:
+            rmtree(os.path.join(WORKER_DIR, self.name))
+        except FileNotFoundError:
+            pass
 
     def log_event(self, payload):
         logfile = os.path.join(WORKER_DIR, self.name, "events.log")

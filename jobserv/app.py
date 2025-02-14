@@ -274,6 +274,13 @@ def worker_list():
         print("%s\t%s\t%s" % (w.name, w.enlisted, w.online))
 
 
+@worker.command("delete")
+@click.argument("name")
+def worker_delete(name):
+    w = Worker.query.filter(Worker.name == name).one()
+    w.delete()
+
+
 @worker.command("enlist")
 @click.argument("name")
 def worker_enlist(name):
