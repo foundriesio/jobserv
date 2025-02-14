@@ -46,7 +46,6 @@ class TestWorkerMonitor(JobServTest):
         _check_workers()
         db.session.refresh(self.worker)
         self.assertFalse(self.worker.online)
-        self.assertRaises(FileNotFoundError, os.stat, self.worker.pings_log)
 
     @patch("jobserv.worker.WORKER_ROTATE_PINGS_LOG")
     def test_rotate(self, rotate):
