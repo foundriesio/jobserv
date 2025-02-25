@@ -91,6 +91,12 @@ def assert_worker_list():
     """Can the requestor list workers."""
 
 
+# Can be used to refine build data called during `trigger_build` before its
+# written to storage and the DB
+# def refine_build(build, projdef):
+#    pass
+
+
 def _sign(url, headers, method):
     headers["X-Time"] = str(round(time.time()))
     msg = "%s,%s,%s" % (method, headers["X-Time"], url)
