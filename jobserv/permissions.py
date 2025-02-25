@@ -96,6 +96,10 @@ def assert_worker_list():
 # def refine_build(build, projdef):
 #    pass
 
+# Can be used to refine the run definition sent to a worker
+# def refine_run_definition(run, rundef):
+#    pass
+
 
 def _sign(url, headers, method):
     headers["X-Time"] = str(round(time.time()))
