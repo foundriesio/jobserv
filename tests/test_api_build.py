@@ -2,8 +2,10 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import json
+import os
+from unittest.mock import Mock, patch
 
-from unittest.mock import patch
+import yaml
 
 from jobserv.permissions import _sign
 from jobserv.models import (
@@ -198,6 +200,31 @@ class BuildAPITest(JobServTest):
         data = {"secrets": {"foo": "bar"}}
         self._post(self.urlbase, json.dumps(data), headers, 201)
         self.assertEqual(data["secrets"], trigger_build.call_args[0][4])
+
+    @patch("jobserv.trigger.permissions")
+    @patch("jobserv.trigger.Storage")
+    def test_build_trigger_with_refine(self, storage, permissions):
+        """Assert our permissions.refine_build hook works."""
+        m = Mock()
+        storage.return_value = m
+
+        def refine(build, projdef):
+            projdef._data["refined"] = True
+
+        permissions.refine_build = refine
+        permissions.assert_can_build = lambda x: True
+
+        data = {"trigger-name": "git"}
+        examples = os.path.join(os.path.dirname(__file__), "../examples/projects")
+        with open(os.path.join(examples, "host-tag.yml")) as f:
+            data["project-definition"] = yaml.safe_load(f)
+
+        headers = {"Content-type": "application/json"}
+        _sign("http://localhost/projects/proj-1/builds/", headers, "POST")
+        self._post(self.urlbase, json.dumps(data), headers, 201)
+        self.assertTrue(
+            yaml.safe_load(m.create_project_definition.call_args[0][1])["refined"]
+        )
 
     @patch("jobserv.api.build.trigger_build")
     def test_build_trigger_with_secrets(self, trigger_build):

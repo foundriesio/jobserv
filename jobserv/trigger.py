@@ -8,6 +8,7 @@ import yaml
 
 from flask import url_for
 
+from jobserv.flask import permissions
 from jobserv.jsend import ApiError
 from jobserv.models import Build, BuildStatus, Run, db
 from jobserv.project import ProjectDefinition
@@ -128,6 +129,11 @@ def trigger_build(
             "Project(%s) does not have a trigger: %s" % (project, trigger_name)
         )
     b = Build.create(project, reason=reason, trigger_name=trigger_name)
+
+    refine_func = getattr(permissions, "refine_build", None)
+    if refine_func:
+        refine_func(b, proj_def)
+
     try:
         storage = Storage()
         storage.create_project_definition(

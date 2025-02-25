@@ -112,6 +112,11 @@ def worker_get(name):
                     f.write("# Run sent to worker: %s\n" % name)
                 rundef = s.get_run_definition(r)
                 _fix_run_urls(rundef)
+
+                refine_func = getattr(permissions, "refine_run_definition", None)
+                if refine_func:
+                    refine_func(r, rundef)
+
                 data["run-defs"] = [json.dumps(rundef)]
             except Exception:
                 r.worker = None
