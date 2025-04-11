@@ -3,6 +3,7 @@
 
 import functools
 import json
+import logging
 import os
 import urllib.parse
 
@@ -17,6 +18,7 @@ from jobserv.settings import (
     RUNNER,
     SIMULATOR_SCRIPT,
     SIMULATOR_SCRIPT_VERSION,
+    WORKER_DISK_FREE_THRESHOLD_BYTES,
     WORKER_SCRIPT,
     WORKER_SCRIPT_VERSION,
 )
@@ -103,7 +105,18 @@ def worker_get(name):
         w.ping(**request.args)
 
     runners = int(request.args.get("available_runners", "0"))
-    if runners > 0 and w.available:
+    disk_free_bytes = int(request.args.get("disk_free", "0"))
+    if (
+        runners > 0
+        and w.available
+        and disk_free_bytes < WORKER_DISK_FREE_THRESHOLD_BYTES
+    ):
+        logging.error(
+            "Worker(%s) disk space too low to check for work: %d free bytes",
+            name,
+            disk_free_bytes,
+        )
+    elif runners > 0 and w.available:
         r = Run.pop_queued(w)
         if r:
             try:
