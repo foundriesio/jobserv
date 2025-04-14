@@ -101,3 +101,8 @@ with open(WORKER_SCRIPT, "rb") as f:
     h = hashlib.md5()
     h.update(f.read())
     WORKER_SCRIPT_VERSION = h.hexdigest()
+
+# A worker needs 30G of free space for our scheduler to assign it work
+WORKER_DISK_FREE_THRESHOLD_BYTES = int(
+    os.environ.get("WORKER_DISK_FREE_THRESHOLD_BYTES", "30_000_000_000")
+)

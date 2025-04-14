@@ -503,9 +503,12 @@ class Run(db.Model, StatusMixin):
             )
         if detailed:
             data["worker_name"] = self.worker_name
-            data["status_events"] = [
-                {"time": x.time, "status": x.status.name} for x in self.status_events
-            ]
+            data["status_events"] = []
+            for event in self.status_events:
+                e = {"time": event.time, "status": event.status.name}
+                if event.worker_name:
+                    e["worker"] = event.worker_name
+                data["status_events"].append(e)
         return data
 
     def derive_fernet_token(self):
@@ -647,7 +650,9 @@ class Run(db.Model, StatusMixin):
                 try:
                     r = Run.query.get(run_id)
                     r.worker_name = worker.name
-                    db.session.add(RunEvents(r, BuildStatus.RUNNING))
+                    event = RunEvents(r, BuildStatus.RUNNING)
+                    event.worker_name = worker.name
+                    db.session.add(event)
                     r.build.refresh_status()
                     db.session.commit()
                     return r
@@ -668,6 +673,8 @@ class RunEvents(db.Model, StatusMixin):
     time = db.Column(db.DateTime)
     _status = db.Column(db.Integer)
     run_id = db.Column(db.Integer, db.ForeignKey(Run.id), nullable=False)
+
+    worker_name = db.Column(db.String(512))
 
     def __init__(self, run, status):
         self.run_id = run.id

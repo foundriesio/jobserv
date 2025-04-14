@@ -458,6 +458,26 @@ class WorkerAPITest(JobServTest):
             [BuildStatus.QUEUED, BuildStatus.RUNNING], [x.status for x in Run.query]
         )
 
+    @patch("jobserv.api.worker.logging")
+    def test_worker_low_disk(self, logging):
+        """Validate we don't assign Runs to something out of disk space"""
+        w = Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, ["aarch96"])
+        w.enlisted = True
+        w.online = True
+        db.session.add(w)
+
+        headers = [
+            ("Content-type", "application/json"),
+            ("Authorization", "Token key"),
+        ]
+        qs = "available_runners=1&disk_free=20000000000"  # 20Gb free
+        resp = self.client.get("/workers/w1/", headers=headers, query_string=qs)
+        self.assertEqual(200, resp.status_code, resp.data)
+        data = json.loads(resp.data.decode())
+        self.assertNotIn("run-defs", data["data"]["worker"])
+        self.assertIn("disk space too low", logging.error.call_args[0][0])
+        self.assertEqual(20000000000, logging.error.call_args[0][2])
+
     def test_worker_create_bad(self):
         headers = [("Content-type", "application/json")]
         r = self.client.post("/workers/w1/", headers=headers, data="{}")
