@@ -1,6 +1,7 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
 import datetime
+from gzip import compress, decompress
 import json
 import os
 import shutil
@@ -95,6 +96,31 @@ class WorkerAPITest(JobServTest):
         db.session.commit()
         resp = self.client.post("/workers/w1/events/", headers=headers, data=event)
         self.assertEqual(404, resp.status_code, resp.data)
+
+    def test_worker_logs(self):
+        w = Worker("w1", "ubuntu", 12, 2, "aarch64", "key", 2, [])
+        w.enlisted = True
+        db.session.add(w)
+        db.session.commit()
+        headers = [
+            ("Content-encoding", "invalid-encoding"),
+            ("Authorization", "Token key"),
+        ]
+
+        resp = self.client.put("/workers/w1/logs/", headers=headers, data="not gzipped")
+        self.assertEqual(400, resp.status_code, resp.data)
+
+        headers[0] = ("Content-encoding", "gzip")
+        data = b"THIS IS THE LOG DATA\nTHIS IS ANOTHER LINE OF LOG DATA"
+        resp = self.client.put(
+            "/workers/w1/logs/", headers=headers, data=compress(data)
+        )
+        self.assertEqual(202, resp.status_code, resp.data)
+
+        p = os.path.join(jobserv.models.WORKER_DIR, f"logs/{w.name}.gz")
+        with open(p, "rb") as f:
+            buf = f.read()
+            self.assertEqual(data, decompress(buf))
 
     @patch("jobserv.api.worker.Storage")
     def test_worker_get_run(self, storage):

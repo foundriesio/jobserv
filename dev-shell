@@ -8,7 +8,7 @@ if [ -n "$INDOCKER" ] ; then
 	git config --system user.email "bot@foundries.io"
 	git config --system protocol.file.allow always
 
-	pip3 install black
+	pip3 install black --break-system-packages
 	exec /bin/bash
 fi
 

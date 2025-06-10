@@ -86,6 +86,9 @@ if CARBON_PREFIX and CARBON_PREFIX[-1] != ".":
 # record of all worker pings.
 WORKER_ROTATE_PINGS_LOG = os.environ.get("ROTATE_PINGS_LOG", "0") != "0"
 
+# How many days to keep worker log files around before deleting
+WORKER_LOGS_THRESHOLD_DAYS = int(os.environ.get("WORKER_LOGS_THRESHOLD_DAYS", "4"))
+
 RUNNER = os.path.join(
     os.path.dirname(__file__), "../runner/dist/jobserv_runner-0.1-py3-none-any.whl"
 )
