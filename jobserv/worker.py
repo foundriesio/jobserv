@@ -94,7 +94,7 @@ def _check_worker_logs():
         st = os.stat(os.path.join(logs_dir, name))
         age = now - st.st_mtime
         if age > cut_off_seconds:
-            log.info("Delete old logs: %s. Age is: %d", age)
+            log.info("Delete old logs: %s. Age is: %d", name, age)
             os.unlink(os.path.join(logs_dir, name))
 
 
