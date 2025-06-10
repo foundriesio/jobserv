@@ -14,7 +14,12 @@ from jobserv.notify import (
     notify_surge_started,
     notify_surge_ended,
 )
-from jobserv.settings import SURGE_SUPPORT_RATIO, WORKER_ROTATE_PINGS_LOG, JOBSERV_URL
+from jobserv.settings import (
+    SURGE_SUPPORT_RATIO,
+    WORKER_ROTATE_PINGS_LOG,
+    WORKER_LOGS_THRESHOLD_DAYS,
+    JOBSERV_URL,
+)
 from jobserv.stats import StatsClient
 
 SURGE_FILE = os.path.join(WORKER_DIR, "enable_surge")
@@ -76,6 +81,21 @@ def _check_workers():
     for w in Worker.query.filter(Worker.enlisted == 1, Worker.deleted == 0):
         _check_worker(w)
     db.session.commit()
+
+
+def _check_worker_logs():
+    logs_dir = os.path.join(WORKER_DIR, "logs")
+    if not os.path.isdir(logs_dir):
+        log.info("No worker logs exist")
+
+    cut_off_seconds = WORKER_LOGS_THRESHOLD_DAYS * 24 * 60 * 60
+    now = time.time()
+    for name in os.listdir(logs_dir):
+        st = os.stat(os.path.join(logs_dir, name))
+        age = now - st.st_mtime
+        if age > cut_off_seconds:
+            log.info("Delete old logs: %s. Age is: %d", age)
+            os.unlink(os.path.join(logs_dir, name))
 
 
 def _check_queue():
@@ -231,6 +251,8 @@ def run_monitor_workers():
             else:
                 log.debug("checking workers")
                 _check_workers()
+                log.debug("checking for worker logs to delete")
+                _check_worker_logs()
                 log.debug("checking queue")
                 _check_queue()
                 log.debug("checking stuck jobs")

@@ -220,6 +220,19 @@ def worker_event(name):
     return jsendify({}, 201)
 
 
+@blueprint.route("workers/<name>/logs/", methods=["PUT"])
+@worker_authenticated
+def worker_logs(name):
+    if not request.worker.enlisted:
+        return jsendify({}, 403)
+    if request.headers["content-encoding"] != "gzip":
+        raise ApiError(400, "gzip content-encoding required")
+    payload = request.get_data()
+    if payload:
+        request.worker.store_logs(payload)
+    return jsendify({}, 202)
+
+
 @blueprint.route("workers/<name>/volumes-deleted/", methods=["GET"])
 @worker_authenticated
 def worker_deleted_volumes(name):

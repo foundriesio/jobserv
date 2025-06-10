@@ -8,6 +8,7 @@ from base64 import b64decode
 import contextlib
 import datetime
 import fcntl
+from gzip import compress as gzip_compress
 import hashlib
 import importlib
 import json
@@ -292,6 +293,23 @@ class JobServ(object):
                 break
         else:
             log.error("Unable to update run: %d: %s", r.status_code, r.text)
+
+    def upload_logs(self, data: bytes):
+        data = gzip_compress(data)
+        headers = self._auth_headers()
+        headers["Content-Encoding"] = "gzip"
+
+        resource = "/workers/%s/logs/" % config["jobserv"]["hostname"]
+        url = urllib.parse.urljoin(config["jobserv"]["server_url"], resource)
+        for i in range(4):
+            if i:
+                log.info("Failed to upload logs. Sleeping and retrying")
+                time.sleep(2 * i)
+            r = self.requests.put(url, headers=headers, data=data, timeout=20)
+            if r.ok:
+                break
+        else:
+            log.error("Unable to upload log data: %d: %s", r.status_code, r.text)
 
 
 def _create_systemd_service():
@@ -788,6 +806,11 @@ def cmd_gcvols(args):
             log.info("Another worker is doing GC")
 
 
+def cmd_upload(args):
+    data = sys.stdin.buffer.read()
+    JobServ().upload_logs(data)
+
+
 def main(args):
     if getattr(args, "func", None):
         log.debug("running: %s", args.func.__name__)
@@ -874,6 +897,12 @@ def get_args(args=None):
     )
     p.add_argument("--dryrun", action="store_true")
     p.set_defaults(func=cmd_gcvols)
+
+    p = sub.add_parser(
+        "upload",
+        help="Upload the content of STDIN to the server as data that can be used for debug.",
+    )
+    p.set_defaults(func=cmd_upload)
 
     args = parser.parse_args(args)
     args.server = JobServ()

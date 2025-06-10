@@ -884,6 +884,19 @@ class Worker(db.Model):
         with open(logfile, "a") as f:
             f.write(json.dumps(payload))
 
+    def store_logs(self, logs_gz: bytes):
+        """Store a gzip copy of log data from a worker. Keeps this seperate
+        from the pings log because we want to keep this around *after*
+        a worker has been deleted so we can debug.
+
+        The worker-monitor logic can delete files old files for us.
+        """
+        logs = os.path.join(WORKER_DIR, "logs", self.name + ".gz")
+        if not os.path.exists(logs):
+            os.makedirs(os.path.dirname(logs))
+        with open(logs, "wb") as f:
+            f.write(logs_gz)
+
     @property
     def pings_log(self):
         return os.path.join(WORKER_DIR, self.name, "pings.log")
