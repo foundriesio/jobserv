@@ -892,8 +892,10 @@ class Worker(db.Model):
         The worker-monitor logic can delete files old files for us.
         """
         logs = os.path.join(WORKER_DIR, "logs", self.name + ".gz")
-        if not os.path.exists(logs):
+        try:
             os.makedirs(os.path.dirname(logs))
+        except FileExistsError:
+            pass
         with open(logs, "wb") as f:
             f.write(logs_gz)
 
