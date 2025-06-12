@@ -42,10 +42,17 @@ class Storage(BaseStorage):
         super().__init__()
         creds_file = os.environ.get("GCE_CREDS")
         if creds_file:
-            client = storage.Client.from_service_account_json(creds_file)
+            self.client = storage.Client.from_service_account_json(creds_file)
         else:
-            client = storage.Client()
-        self.bucket = client.get_bucket(GCE_BUCKET)
+            self.client = storage.Client()
+        self._bucket = None
+
+    @property
+    def bucket(self):
+        if self._bucket:
+            return self._bucket
+        self._bucket = self.client.get_bucket(GCE_BUCKET)
+        return self._bucket
 
     @retry()
     def _create_from_string(self, storage_path, contents):
