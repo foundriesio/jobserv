@@ -242,6 +242,38 @@ def _check_cancelled():
         _update_run(run, status=BuildStatus.FAILED.name, message=m)
 
 
+def _check_acked():
+    """Find runs that are in RUNNING state but were never ack'd by the worker.
+    This can happen in a scenario like:
+      * worker calls "check-in"
+      * backend assigns run to worker
+      * worker's connection dies before it gets the response
+    The worker will continue to check in, but it won't find any work to do
+    since the backend thinks the worker already knows about it.
+
+    api/run.py now has logic to set the `running_acked` flag on a run during
+    a call to update_run.
+
+    The method finds where it hasn't happened and re-queues the work.
+    """
+    qs = Run.query.filter(
+        Run.status == BuildStatus.RUNNING,
+        Run.running_acked == 0,
+    )
+    now = datetime.datetime.utcnow()
+    for r in qs:
+        cut_off = r.status_events[-1].time + datetime.timedelta(seconds=15)
+        if now > cut_off:
+            log.error(
+                "Run has not been acked by worker: %s %d %s",
+                r.build.project,
+                r.build.build_id,
+                r,
+            )
+            r.status = BuildStatus.QUEUED
+            db.session.commit()
+
+
 def run_monitor_workers():
     log.info("worker monitor has started")
     try:
@@ -249,6 +281,14 @@ def run_monitor_workers():
             if not os.path.exists(WORKER_DIR):
                 log.info("Skipping check for surges. WORKER_DIR does not exist")
             else:
+                # Run for about 2 minutes - every 15 seconds
+                for i in range(8):
+                    db.session.rollback()  # required so we see db updates between loops
+                    log.debug("checking for acked runs")
+                    _check_acked()
+                    time.sleep(10)
+
+                # Every 2 minutes check this other stuff:
                 log.debug("checking workers")
                 _check_workers()
                 log.debug("checking for worker logs to delete")
@@ -259,6 +299,5 @@ def run_monitor_workers():
                 _check_stuck()
                 log.debug("checking cancelled jobs")
                 _check_cancelled()
-            time.sleep(120)  # run every 2 minutes
     except Exception:
         log.exception("unexpected error in run_monitor_workers")

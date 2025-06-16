@@ -15,7 +15,13 @@ from unittest.mock import patch
 from jobserv.models import db, Build, BuildStatus, Project, Run, RunEvents, Worker
 from jobserv.settings import SURGE_SUPPORT_RATIO
 from jobserv import worker as worker_module
-from jobserv.worker import _check_queue, _check_stuck, _check_workers, _check_cancelled
+from jobserv.worker import (
+    _check_acked,
+    _check_queue,
+    _check_stuck,
+    _check_workers,
+    _check_cancelled,
+)
 
 from tests import JobServTest
 
@@ -187,3 +193,34 @@ class TestWorkerMonitor(JobServTest):
         _check_cancelled()
 
         self.assertEqual("FAILED", update.call_args[1]["status"])
+
+    def test_running_acked(self):
+        """Ensure we can detect runs that have not been acked by worker."""
+        self.create_projects("proj1")
+        b = Build.create(Project.query.all()[0])
+        r = Run(b, "bla")
+        r.status = BuildStatus.RUNNING
+        db.session.add(r)
+        db.session.flush()
+        e = RunEvents(r, BuildStatus.RUNNING)
+        db.session.add(e)
+        db.session.commit()
+
+        # It's only been 10 seconds - we shouldn't do anything
+        e.time = datetime.datetime.utcnow() - datetime.timedelta(seconds=10)
+        db.session.commit()
+        _check_acked()
+        self.assertEqual(BuildStatus.RUNNING, Run.query.get(r.id).status)
+
+        # We've gone passed 15 seconds, we should QUEUE this run again
+        e.time = datetime.datetime.utcnow() - datetime.timedelta(seconds=16)
+        db.session.commit()
+        _check_acked()
+        self.assertEqual(BuildStatus.QUEUED, Run.query.get(r.id).status)
+
+        # This is a real run in progress
+        r.status = BuildStatus.RUNNING
+        r.running_acked = 1
+        db.session.commit()
+        _check_acked()
+        self.assertEqual(BuildStatus.RUNNING, Run.query.get(r.id).status)

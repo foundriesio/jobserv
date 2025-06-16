@@ -422,6 +422,7 @@ class Run(db.Model, StatusMixin):
     build_id = db.Column(db.Integer, db.ForeignKey(Build.id), nullable=False)
     name = db.Column(db.String(80))
     _status = db.Column(db.Integer)
+    running_acked = db.Column(db.Integer, default=0)
     api_key = db.Column(db.String(80), nullable=False)
     trigger = db.Column(db.String(80))
     meta = db.Column(db.String(1024))
@@ -556,6 +557,8 @@ class Run(db.Model, StatusMixin):
             status = BuildStatus[status]
         if self.status != status:
             self.status = status
+            if status == BuildStatus.QUEUED:
+                self.running_acked = 0
             db.session.flush()
             self.build.refresh_status()
             db.session.add(RunEvents(self, status))
@@ -650,6 +653,7 @@ class Run(db.Model, StatusMixin):
                 try:
                     r = Run.query.get(run_id)
                     r.worker_name = worker.name
+                    r.running_acked = 0
                     event = RunEvents(r, BuildStatus.RUNNING)
                     event.worker_name = worker.name
                     db.session.add(event)

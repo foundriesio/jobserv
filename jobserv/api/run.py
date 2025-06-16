@@ -253,6 +253,10 @@ def run_update(proj, build_id, run):
     r = _get_run(proj, build_id, run)
     _authenticate_runner(r)
 
+    if not r.running_acked:
+        r.running_acked = 1
+        db.session.commit()
+
     storage = Storage()
     if request.data:
         with storage.console_logfd(r, "ab") as f:
