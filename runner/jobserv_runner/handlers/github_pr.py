@@ -2,6 +2,8 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import json
+import logging
+import time
 
 from jobserv_runner.handlers.git_poller import GitPoller, HandlerError
 from jobserv_runner.jobserv import JobServApi, _post
@@ -17,6 +19,8 @@ class GHStatusApi(JobServApi):
 
     def __init__(self, rundef):
         super().__init__(rundef["run_url"], rundef["api_key"])
+
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         self.headers = {
             "Content-Type": "application/json",
@@ -35,7 +39,15 @@ class GHStatusApi(JobServApi):
         if self.data.get("state") != state:
             self.data["state"] = state
             data = json.dumps(self.data).encode()
-            _post(self.status_url, data, self.headers, raise_error=True)
+            for i in range(8):
+                if i:
+                    self.logger.info("Failed to update run, sleeping and retrying")
+                    time.sleep(2 * i)
+                r = _post(self.status_url, data, self.headers, raise_error=True)
+                if r.status < 300:
+                    break
+            else:
+                self.logger.error("Unable to update run: %d: %s", r.status_code, r.text)
         return rv
 
 
