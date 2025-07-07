@@ -262,6 +262,8 @@ def _check_acked():
     )
     now = datetime.datetime.utcnow()
     for r in qs:
+        if len(r.status_events) == 0:
+            continue
         cut_off = r.status_events[-1].time + datetime.timedelta(seconds=15)
         if now > cut_off:
             log.error(
