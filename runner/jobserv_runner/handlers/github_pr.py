@@ -2,9 +2,11 @@
 # Author: Andy Doan <andy.doan@linaro.org>
 
 import json
+import logging
+import time
 
 from jobserv_runner.handlers.git_poller import GitPoller, HandlerError
-from jobserv_runner.jobserv import JobServApi, _post
+from jobserv_runner.jobserv import JobServApi, PostError, _post
 
 STATUS_MAP = {
     "PASSED": "success",
@@ -35,7 +37,18 @@ class GHStatusApi(JobServApi):
         if self.data.get("state") != state:
             self.data["state"] = state
             data = json.dumps(self.data).encode()
-            _post(self.status_url, data, self.headers, raise_error=True)
+            for i in range(4):
+                if i:
+                    logging.info("Failed to update run, sleeping and retrying")
+                    time.sleep(2 * i)
+                try:
+                    r = _post(self.status_url, data, self.headers, raise_error=True)
+                    if r.status < 300:
+                        break
+                except PostError as e:
+                    logging.error(e)
+            else:
+                logging.error("Unable to update run: %d: %s", r.status_code, r.text)
         return rv
 
 
