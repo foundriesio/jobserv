@@ -1,22 +1,22 @@
-Flask-Migrate==4.0.4
+Flask-Migrate==4.0.7
 Flask-SQLAlchemy==3.0.5
 Flask-Testing==0.8.1
-Flask==2.3.3
-PyJWT==2.8.0
-PyMySQL==1.1.1
+Flask==3.1.1
+PyJWT==2.10.1
+PyMySQL==1.1.2
 PyYAML==6.0.1
-SQLAlchemy==1.4.23
-Werkzeug==3.0.6
-bcrypt==4.0.1
+SQLAlchemy==1.4.54
+Werkzeug==3.1.4
+bcrypt==5.0.0
 cryptography==44.0.1
 dataclasses==0.6
 google-cloud-storage==2.10.0
 # gunicorn 20.1.0 switched from os.sendfile to socket.sendfile which causes
 # a bug in our console tailing: https://github.com/benoitc/gunicorn/commit/2d40e6daceb9735d27bb91d9c32743695de8e01c
 gunicorn==23.0.0
-json-logging==1.3.0
+json-logging==1.5.1
 pykwalify==1.8.0
 python-dateutil==2.8.2
 pytz==2023.3
-requests==2.32.4
+requests==2.32.5
 wheel==0.41.2
