@@ -635,27 +635,6 @@ def cmd_check(args):
 
 def _docker_clean():
     try:
-        containers = subprocess.check_output(
-            ["docker", "ps", "--filter", "status=exited", "-q"]
-        )
-        containers = containers.decode().splitlines()
-        if not containers:
-            return  # nothing to clean up
-        cmd = ["docker", "inspect", "--format", "{{.State.FinishedAt}}"]
-        times = subprocess.check_output(cmd + containers).decode().splitlines()
-
-        now = datetime.datetime.now()
-        deletes = []
-        for i, ts in enumerate(times):
-            # Times are like: 2017-09-19T21:17:33.465435028Z
-            # Strip of the nanoseconds and parse the date
-            ts = ts.split(".")[0]
-            ts = datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%S")
-            if (now - ts).total_seconds() > 7200:  # 2 hours old
-                deletes.append(containers[i])
-        if deletes:
-            log.info("Cleaning up old containers:\n  %s", "\n  ".join(deletes))
-            subprocess.check_call(["docker", "rm", "-v"] + deletes)
         subprocess.check_call(["docker", "volume", "prune", "-f"])
     except subprocess.CalledProcessError as e:
         log.exception(e)
