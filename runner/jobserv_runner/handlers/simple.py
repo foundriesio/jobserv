@@ -230,7 +230,7 @@ class SimpleHandler(object):
                         stderr=f,
                     )
 
-            cmd = ["docker", "run"]
+            cmd = ["docker", "run", "--rm"]
             cmd.extend(["--name", name])
             cmd.extend(["-w", self.container_cwd])
             cmd.extend(["--env-file", env_file])
