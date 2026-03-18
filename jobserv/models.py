@@ -532,17 +532,13 @@ class Run(db.Model, StatusMixin):
         conn = db.session.connection().connection
         cursor = conn.cursor()
 
-        rows = cursor.execute(
-            """
+        rows = cursor.execute("""
             UPDATE runs
             SET
                 _status = 2
             WHERE
                 id = {run_id}
-            """.format(
-                run_id=self.id
-            )
-        )
+            """.format(run_id=self.id))
         db.session.commit()
         if rows == 1:
             # It was us
@@ -575,8 +571,7 @@ class Run(db.Model, StatusMixin):
         cursor = conn.cursor()
 
         # Find queued(status=1), running(status=2), and uploading(status=6) runs
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT
               runs.id, runs.build_id, runs._status,
               projects.id, projects.synchronous_builds, runs.host_tag
@@ -588,8 +583,7 @@ class Run(db.Model, StatusMixin):
               ORDER BY
                 runs._status DESC, runs.queue_priority DESC,
                 runs.build_id ASC, runs.id ASC
-            """
-        )
+            """)
 
         tags = [worker.name] + [x.strip() for x in worker.host_tags.split(",")]
         # By ordering the query above by Run._status, we'll get the active
@@ -631,17 +625,13 @@ class Run(db.Model, StatusMixin):
         # the second worker won't see a row change, and won't schedule anything
         # This means the worker will have to check in again to find work
         # (if any)
-        rows = cursor.execute(
-            """
+        rows = cursor.execute("""
             UPDATE runs
             SET
                 _status = 2
             WHERE
                 id = {run_id}
-            """.format(
-                run_id=run_id
-            )
-        )
+            """.format(run_id=run_id))
         db.session.commit()
         if rows == 1:
             # Critical Section!

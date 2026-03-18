@@ -361,9 +361,7 @@ EIEIO
 
 wget -O runner {runner}
 PYTHONPATH=./runner python3 -m jobserv_runner.simulator -w `pwd` rundef.json
-    """.format(
-        rundef=rundef_str, runner=runner
-    )
+    """.format(rundef=rundef_str, runner=runner)
     return script, 200, {"Content-Type": "text/plain"}
 
 

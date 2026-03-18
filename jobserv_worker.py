@@ -364,8 +364,7 @@ def cmd_register(args):
     p = HostProps()
     args.server.create_host(p.data)
     p.cache()
-    print(
-        """
+    print("""
 A SystemD service can be enabled with:
   sudo cp jobserv.service /etc/systemd/system/
   sudo systemctl enable jobserv
@@ -375,8 +374,7 @@ You also need to add a sudo entry to allow the worker to clean up root owned
 files from CI runs:
 
  echo "$USER ALL=(ALL) NOPASSWD:/bin/rm" | sudo tee /etc/sudoers.d/jobserv
-"""
-    )
+""")
 
 
 def cmd_unregister(args):

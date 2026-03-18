@@ -144,9 +144,7 @@ def notify_build_complete_email(build, to_list):
     body += """Build history for last {total} builds:
   pass rate: {pass_rate}%
    (newest->oldest): {pass_fails}
-    """.format(
-        **stats
-    )
+    """.format(**stats)
 
     msg = MIMEText(body)
     msg["Subject"] = subject

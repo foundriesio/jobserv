@@ -447,9 +447,7 @@ class SimpleHandler(object):
     # wget'ing the file may require the --header flag if the
     # jobserv API requires authentication.
     sh ./simulate.sh
-""".format(
-                run=self.rundef["run_url"]
-            )
+""".format(run=self.rundef["run_url"])
             log._write(msg)
 
     def prepare_mounts(self):
