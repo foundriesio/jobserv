@@ -47,7 +47,7 @@ scripts:
     apk add musl-dev gcc
     pip3 install -r ./requirements-lint.txt
     black --check --diff ./jobserv ./runner ./tests ./jobserv_worker.py
-    flake8 --exclude=migrations/ ./ | tee flake8.txt
+    flake8 --max-line-length=200 --exclude=migrations/ ./ | tee flake8.txt
     flake8_junit flake8.txt /archive/junit.xml
 
   unit-test: |

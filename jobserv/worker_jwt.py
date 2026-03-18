@@ -21,7 +21,6 @@ import jwt
 
 from jobserv.settings import WORKER_JWTS_DIR
 
-
 _keys: Dict[str, Certificate] = {}
 
 
