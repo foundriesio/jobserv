@@ -83,7 +83,7 @@ def worker_from_jwt(encoded: str) -> WorkerJWT:
     if not cert:
         raise jwt.InvalidKeyError("No certificate found with id " + kid)
 
-    decoded = jwt.decode(encoded, cert.public_key(), algorithms=["ES256"])
+    decoded = jwt.decode(encoded, cert.public_key(), algorithms=["ES256K", "ES256"])
     try:
         decoded.pop("exp")
     except KeyError:
