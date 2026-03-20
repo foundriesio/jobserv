@@ -1,4 +1,5 @@
 import datetime
+import time
 import hashlib
 import logging
 from pathlib import Path
@@ -83,7 +84,7 @@ def worker_from_jwt(encoded: str) -> WorkerJWT:
     if not cert:
         raise jwt.InvalidKeyError("No certificate found with id " + kid)
 
-    decoded = jwt.decode(encoded, cert.public_key(), algorithms=["ES256"])
+    decoded = jwt.decode(encoded, cert.public_key(), algorithms=["ES256K", "ES256"])
     try:
         decoded.pop("exp")
     except KeyError:
@@ -99,3 +100,22 @@ def worker_from_jwt(encoded: str) -> WorkerJWT:
     if ous:
         allowed = [x.value for x in ous]
     return WorkerJWT(name, allowed)
+
+
+def worker_create_jwt(name: str, key: EllipticCurvePrivateKey, expires=None) -> str:
+    h = hashlib.sha256()
+    h.update(
+        key.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+    )
+    headers = {"kid": h.hexdigest()}
+
+    if expires is None:
+        expires = time.time() + (60 * 60 * 24)
+    worker = {
+        "name": name,
+        "exp": expires,
+    }
+    alg = "ES256K"
+    if key.curve.name != "secp256k1":
+        alg = "ES256"
+    return jwt.encode(worker, key, algorithm=alg, headers=headers)

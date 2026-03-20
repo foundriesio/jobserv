@@ -1,6 +1,5 @@
 # Copyright (C) 2017 Linaro Limited
 # Author: Andy Doan <andy.doan@linaro.org>
-import datetime
 from gzip import compress, decompress
 import json
 import os
@@ -8,12 +7,10 @@ import shutil
 import tempfile
 from unittest.mock import patch
 
-import jwt
-
 import jobserv.models
 from jobserv.models import Build, BuildStatus, Project, Run, Worker, db
 import jobserv.worker
-from jobserv.worker_jwt import _keyid
+from jobserv.worker_jwt import worker_create_jwt
 
 from tests import JobServTest
 from tests.test_worker_jwt import create_jwt
@@ -572,10 +569,7 @@ class WorkerAPITest(JobServTest):
         key, cert = create_jwt([])
         jobserv.worker_jwt._keys.clear()
 
-        jwt_headers = {"kid": _keyid(cert)}
-        worker = {"name": "MrJWT"}
-        worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
-        encoded = jwt.encode(worker, key, algorithm="ES256", headers=jwt_headers)
+        encoded = worker_create_jwt("MrJWT", key)
 
         headers = [
             ("Content-type", "application/json"),
@@ -589,9 +583,7 @@ class WorkerAPITest(JobServTest):
         self.assertEqual("alpine", data["worker"]["distro"])
 
         # change the name and ensure it can't access another worker's data
-        worker = {"name": "NotMrJWT", "tags": ["1"]}
-        worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
-        encoded = jwt.encode(worker, key, algorithm="ES256", headers=jwt_headers)
+        encoded = worker_create_jwt("NotMrJWT", key)
         headers[1] = ("Authorization", "Bearer " + encoded)
         r = self.client.patch("/workers/MrJWT/", headers=headers, json=data)
         self.assertEqual(404, r.status_code, r.data)
@@ -604,10 +596,7 @@ class WorkerAPITest(JobServTest):
         key, cert = create_jwt(["org1"])
         jobserv.worker_jwt._keys.clear()
 
-        headers = {"kid": _keyid(cert)}
-        worker = {"name": "MrJWT"}
-        worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
-        encoded = jwt.encode(worker, key, algorithm="ES256", headers=headers)
+        encoded = worker_create_jwt("MrJWT", key)
 
         headers = [
             ("Content-type", "application/json"),
