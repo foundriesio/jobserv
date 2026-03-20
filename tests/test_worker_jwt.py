@@ -10,7 +10,12 @@ import jwt
 from cryptography.hazmat.primitives.serialization import Encoding
 
 import jobserv.worker_jwt
-from jobserv.worker_jwt import _keyid, create_keypair, worker_from_jwt
+from jobserv.worker_jwt import (
+    _keyid,
+    create_keypair,
+    worker_from_jwt,
+    worker_create_jwt,
+)
 
 
 def create_jwt(orgs):
@@ -38,23 +43,21 @@ class WorkerJwtTest(TestCase):
 
         headers = {}
         worker = {"name": "name"}
-        encoded = jwt.encode(worker, self.pk1, algorithm="ES256", headers=headers)
+        encoded = jwt.encode(worker, self.pk1, algorithm="ES256K", headers=headers)
         self.assertRaises(jwt.DecodeError, worker_from_jwt, encoded)
 
         headers["kid"] = _keyid(self.cert1)
 
         # valid JWT, but no expiriation field:
-        encoded = jwt.encode(worker, self.pk1, algorithm="ES256", headers=headers)
+        encoded = jwt.encode(worker, self.pk1, algorithm="ES256K", headers=headers)
         self.assertRaises(jwt.MissingRequiredClaimError, worker_from_jwt, encoded)
 
         # valid JWT, but expired
-        worker["exp"] = datetime.datetime.utcnow() - datetime.timedelta(seconds=30)
-        encoded = jwt.encode(worker, self.pk1, algorithm="ES256", headers=headers)
+        encoded = worker_create_jwt("name", self.pk1, expires=-1)
         self.assertRaises(jwt.ExpiredSignatureError, worker_from_jwt, encoded)
 
         # valid
-        worker["exp"] = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
-        encoded = jwt.encode(worker, self.pk1, algorithm="ES256", headers=headers)
+        encoded = worker_create_jwt("name", self.pk1)
         w = worker_from_jwt(encoded)
         self.assertEqual("name", w.name)
 
@@ -64,7 +67,7 @@ class WorkerJwtTest(TestCase):
             "name": "restricted",
             "exp": datetime.datetime.utcnow() + datetime.timedelta(seconds=30),
         }
-        encoded = jwt.encode(worker, self.pk2, algorithm="ES256", headers=headers)
+        encoded = jwt.encode(worker, self.pk2, algorithm="ES256K", headers=headers)
         w = worker_from_jwt(encoded)
         self.assertEqual("restricted", w.name)
         self.assertEqual(["org1", "org2"], w.allowed_tags)
