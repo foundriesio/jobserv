@@ -19,7 +19,7 @@ triggers:
     type: git_poller
     params:
       GIT_URL: "https://github.com/foundriesio/jobserv.git"
-      GIT_POLL_REFS: "refs/heads/master"
+      GIT_POLL_REFS: "refs/heads/chore/update_python_runtime"
     runs:
       - name: build-container
         container: docker:dind
@@ -33,7 +33,7 @@ triggers:
     type: git_poller
     params:
       GIT_URL: "https://github.com/foundriesio/jobserv.git"
-      GIT_POLL_REFS: "refs/heads/master"
+      GIT_POLL_REFS: "refs/heads/chore/update_python_runtime"
     runs:
       - name: flake8
         container: python:3.5-alpine
