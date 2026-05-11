@@ -4,7 +4,7 @@ create_flock_script () {
 	# /usr/bin/flock uses the "flock" call instead of fcntl.
 	# fcntl is required for NFS shares
 	cat > /tmp/flock <<EOF
-#!/usr/bin/python3
+#!/usr/bin/env python3
 import fcntl
 import subprocess
 import sys
