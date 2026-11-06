@@ -111,6 +111,12 @@ def _get_build_stats(build):
 
 
 def _send(message):
+    if not SMTP_USER or not SMTP_PASSWORD:
+        log.info(
+            "SMTP not configured (SMTP_USER/SMTP_PASSWORD unset), skipping email: %s",
+            message.get("Subject"),
+        )
+        return
     last_exc = None
     for x in range(3):
         with smtp_session() as s:

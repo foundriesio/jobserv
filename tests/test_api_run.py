@@ -581,6 +581,60 @@ class RunAPITest(JobServTest):
 
     @patch("jobserv.api.run.Storage")
     @patch("jobserv.api.run.notify_build_complete_email")
+    @patch("jobserv.api.run.notify_build_complete_webhook")
+    def test_build_complete_notification_failure_keeps_status(
+        self, webhook, build_complete_email, storage
+    ):
+        # The email runs inside Build.locked(), whose commit only happens if it
+        # returns cleanly. A broken SMTP credential used to roll back the run's
+        # PASSED status, leaving the build stuck as RUNNING.
+        build_complete_email.side_effect = Exception("535 authentication failed")
+        m = Mock()
+        m.get_project_definition.return_value = json.dumps(
+            {
+                "timeout": 5,
+                "triggers": [
+                    {
+                        "name": "github",
+                        "type": "github_pr",
+                        "runs": [{"name": "run0"}],
+                        "email": {"users": "f@f.com"},
+                        "webhooks": [
+                            {
+                                "url": "https://example.com",
+                                "secret_name": "example_secret",
+                            }
+                        ],
+                    },
+                ],
+            }
+        )
+        m.console_logfd.return_value = open("/dev/null", "w")
+        m.get_run_definition.return_value = {
+            "secrets": {"example_secret": "secret_value"}
+        }
+        storage.return_value = m
+        r = Run(self.build, "run0")
+        r.trigger = "github"
+        r.status = BuildStatus.RUNNING
+        db.session.add(r)
+        db.session.commit()
+
+        headers = [
+            ("Authorization", "Token %s" % r.api_key),
+            ("X-RUN-STATUS", "PASSED"),
+        ]
+        self._post(self.urlbase + "run0/", None, headers, 200)
+
+        build_complete_email.assert_called_once()
+        webhook.assert_called_once()
+        db.session.refresh(r)
+        db.session.refresh(self.build)
+        self.assertEqual(BuildStatus.PASSED, r.status)
+        self.assertEqual(BuildStatus.PASSED, self.build.status)
+
+    @patch("jobserv.api.run.Storage")
+    @patch("jobserv.api.run.notify_build_complete_email")
     def test_build_complete_email_skip(self, build_complete, storage):
         m = Mock()
         m.get_project_definition.return_value = json.dumps(

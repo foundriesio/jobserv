@@ -19,6 +19,12 @@ from jobserv.notify import _get_build_stats, notify_build_complete_email
 class SendmailTest(JobServTest):
     def setUp(self):
         super().setUp()
+        # Sending is skipped without SMTP credentials, so the tests that expect a
+        # message need some.
+        for name, value in (("SMTP_USER", "jobserv"), ("SMTP_PASSWORD", "secret")):
+            patcher = patch("jobserv.notify." + name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.create_projects("job-1")
         self.proj = Project.query.filter_by(name="job-1").first_or_404()
         self.build = Build.create(self.proj)
