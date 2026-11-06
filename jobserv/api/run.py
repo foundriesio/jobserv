@@ -125,7 +125,14 @@ def _handle_build_complete(projdef, storage, build, params, secrets, trigger):
     email = trigger.get("email", projdef.project_email)
     if email:
         if build.status == BuildStatus.FAILED or not email.get("only_failures"):
-            notify_build_complete_email(build, email["users"])
+            try:
+                notify_build_complete_email(build, email["users"])
+            except Exception:
+                # Don't let an unexpected smtp failure prevent us from
+                # completing the build
+                current_app.logger.exception(
+                    "Unable to send build-complete email for build %d", build.id
+                )
     webhooks = trigger.get("webhooks", projdef.project_webhooks)
     if webhooks:
         for webhook in webhooks:
